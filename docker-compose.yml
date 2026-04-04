@@ -9,12 +9,15 @@ services:
       - "5432:5432"
     volumes:
       - /var/lib/postgresql/data
+    networks:
+      - monitoring
 
   web:
     build: .
     command: uv run run.py
     environment:
       FLASK_DEBUG: ${FLASK_DEBUG:-true}
+      FLASK_PORT: 5000
       DATABASE_NAME: ${DATABASE_NAME:-hackathon_db}
       DATABASE_HOST: db
       DATABASE_PORT: 5432
@@ -25,4 +28,48 @@ services:
       - "5000:5000"
     volumes:
       - .:/app
+    depends_on:
+      - db
+    networks:
+      - monitoring
 
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=7d"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      - web
+    networks:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:10.4.2
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/provisioning/dashboards/flask_overview.json
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - monitoring
+
+networks:
+  monitoring:
+    driver: bridge
+
+volumes:
+  prometheus_data:
+  grafana_data:
