@@ -1,6 +1,5 @@
 from app.services.errors import ConflictError, InternalError, NotFoundError, ValidationError
 from app.services.events_service import EventsService
-from app.services.shortener_service import ShortenerService
 from app.services.urls_service import UrlsService
 from app.services.users_service import UsersService
 
@@ -10,7 +9,6 @@ __all__ = [
     "NotFoundError",
     "ValidationError",
     "EventsService",
-    "ShortenerService",
     "UrlsService",
     "UsersService",
 ]

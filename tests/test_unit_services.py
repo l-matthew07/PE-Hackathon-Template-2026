@@ -2,44 +2,44 @@
 
 from datetime import datetime
 
-from app.services.shortener_service import ShortenerService
+from app.services.urls_service import UrlsService
 from app.services.users_service import UsersService
 from app.services.events_service import EventsService
 
 
-class TestShortenerServiceHelpers:
+class TestUrlsServiceHelpers:
     def test_parse_optional_int_none(self):
-        assert ShortenerService._parse_optional_int(None) is None
+        assert UrlsService._parse_optional_int(None) is None
 
     def test_parse_optional_int_empty(self):
-        assert ShortenerService._parse_optional_int("") is None
+        assert UrlsService._parse_optional_int("") is None
 
     def test_parse_optional_int_valid(self):
-        assert ShortenerService._parse_optional_int("42") == 42
+        assert UrlsService._parse_optional_int("42") == 42
 
     def test_parse_optional_int_invalid(self):
-        assert ShortenerService._parse_optional_int("abc") is None
+        assert UrlsService._parse_optional_int("abc") is None
 
     def test_parse_datetime_none(self):
-        assert ShortenerService._parse_datetime(None) is None
+        assert UrlsService._parse_datetime(None) is None
 
     def test_parse_datetime_empty(self):
-        assert ShortenerService._parse_datetime("") is None
+        assert UrlsService._parse_datetime("") is None
 
     def test_parse_datetime_valid(self):
-        result = ShortenerService._parse_datetime("2024-01-15T10:30:00Z")
+        result = UrlsService._parse_datetime("2024-01-15T10:30:00Z")
         assert isinstance(result, datetime)
 
     def test_parse_datetime_invalid(self):
-        assert ShortenerService._parse_datetime("not-a-date") is None
+        assert UrlsService._parse_datetime("not-a-date") is None
 
     def test_parse_bool_true(self):
-        assert ShortenerService._parse_bool("true") is True
-        assert ShortenerService._parse_bool(True) is True
+        assert UrlsService._parse_bool("true") is True
+        assert UrlsService._parse_bool(True) is True
 
     def test_parse_bool_false(self):
-        assert ShortenerService._parse_bool("false") is False
-        assert ShortenerService._parse_bool("0") is False
+        assert UrlsService._parse_bool("false") is False
+        assert UrlsService._parse_bool("0") is False
 
 
 class TestUsersServiceHelpers:

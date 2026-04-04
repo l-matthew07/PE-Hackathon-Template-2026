@@ -23,16 +23,16 @@ export function setup() {
   const shortCodes = [];
   const params = {
     headers: { "Content-Type": "application/json" },
-    tags: { endpoint: "POST /shorten", phase: "setup" },
+    tags: { endpoint: "POST /url", phase: "setup" },
   };
 
   for (let i = 0; i < SHORT_POOL_SIZE; i += 1) {
     const payload = JSON.stringify({
-      url: `https://example.com/seed/${Date.now()}-${i}`,
+      original_url: `https://example.com/seed/${Date.now()}-${i}`,
       title: "k6-seed",
     });
 
-    const response = http.post(`${BASE_URL}/shorten`, payload, params);
+    const response = http.post(`${BASE_URL}/url`, payload, params);
     if (response.status !== 201) {
       continue;
     }
@@ -67,16 +67,16 @@ export default function (data) {
 
 function createShortUrl() {
   const payload = JSON.stringify({
-    url: `https://loadtest.example.com/${__VU}-${__ITER}-${Date.now()}`,
+    original_url: `https://loadtest.example.com/${__VU}-${__ITER}-${Date.now()}`,
     title: "quest-load",
   });
-  const response = http.post(`${BASE_URL}/shorten`, payload, {
+  const response = http.post(`${BASE_URL}/url`, payload, {
     headers: { "Content-Type": "application/json" },
-    tags: { endpoint: "POST /shorten" },
+    tags: { endpoint: "POST /url" },
   });
 
   check(response, {
-    "POST /shorten is 201": (res) => res.status === 201,
+    "POST /url is 201": (res) => res.status === 201,
   });
 }
 
