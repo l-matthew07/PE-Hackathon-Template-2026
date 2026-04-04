@@ -3,7 +3,7 @@ import { check, sleep } from "k6";
 
 const BASE_URL = ((__ENV.BASE_URL || "http://localhost").trim()).replace(/\/$/, "");
 const VUS = Number.parseInt(__ENV.VUS || "50", 10);
-const DURATION = __ENV.DURATION || "2m";
+const DURATION = __ENV.DURATION || "1m";
 const SHORTEN_RATIO = clampRatio(__ENV.SHORTEN_RATIO, 0.2);
 const RESOLVE_RATIO = clampRatio(__ENV.RESOLVE_RATIO, 0.65);
 const STAGES = parseStages(__ENV.STAGES || "");

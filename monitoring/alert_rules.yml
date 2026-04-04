@@ -2,7 +2,7 @@ groups:
   - name: flask_shortener_alerts
     rules:
       - alert: ServiceDown
-        expr: up{job="flask-shortener"} == 0
+        expr: up{job="flask_app"} == 0
         for: 1m
         labels:
           severity: critical
@@ -19,11 +19,11 @@ groups:
         expr: >
           (
             sum by (instance) (
-              rate(flask_http_request_total{job="flask-shortener", status=~"5.."}[2m])
+              rate(http_requests_total{job="flask_app", status_code=~"5.."}[2m])
             )
             /
             sum by (instance) (
-              rate(flask_http_request_total{job="flask-shortener"}[2m])
+              rate(http_requests_total{job="flask_app"}[2m])
             )
           ) > 0.05
         for: 2m

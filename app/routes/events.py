@@ -79,7 +79,7 @@ def create_event(body: EventCreatePayload):
     return _serialize_event(event), 201
 
 
-@events_bp.post("/bulk", responses={200: BulkLoadResponse, 400: ErrorEnvelope})
+@events_bp.post("/bulk", responses={201: BulkLoadResponse, 400: ErrorEnvelope})
 def bulk_load_events():
     payload = request.get_json(silent=True) or {}
     filename = str(payload.get("file") or "events.csv").strip() or "events.csv"
@@ -88,4 +88,4 @@ def bulk_load_events():
         loaded_count = events_service.bulk_load_events(filename)
     except ServiceError as exc:
         return error_response(exc.message, exc.code, exc.status, details=exc.details)
-    return {"file": filename, "row_count": requested_count, "loaded": loaded_count}, 200
+    return {"file": filename, "row_count": requested_count, "loaded": loaded_count}, 201

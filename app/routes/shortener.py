@@ -1,3 +1,5 @@
+import logging
+
 from flask import redirect, request
 from flask_openapi3.blueprint import APIBlueprint
 from flask_openapi3.models.tag import Tag
@@ -6,6 +8,8 @@ from app.cache import cache_get, cache_set
 from app.config import get_settings
 from app.lib.api import error_response
 from app.models.url import Url
+from app.routes.bulk import register_bulk_load_endpoint
+from app.routes.metrics import url_shortener_redirects_total
 from app.services.errors import ServiceError
 from app.services.schemas import (
     BulkLoadResponse,
@@ -15,6 +19,8 @@ from app.services.schemas import (
     ShortenResponse,
 )
 from app.services.shortener_service import ShortenerService
+
+logger = logging.getLogger(__name__)
 
 shortener_tag = Tag(name="shortener")
 shortener_bp = APIBlueprint("shortener", __name__, abp_tags=[shortener_tag])
@@ -33,8 +39,10 @@ def shorten_url(body: ShortenPayload):
     try:
         url = shortener_service.create_short_url(body.model_dump())
     except ServiceError as exc:
+        logger.warning("URL validation failed: %s", exc.message)
         return error_response(exc.message, exc.code, exc.status, details=exc.details)
 
+    logger.info("URL shortened: %s -> %s", url.original_url, url.short_code)
     return (
         {
             "original_url": url.original_url,
@@ -50,19 +58,23 @@ def resolve_short_url(path: ShortCodePath):
     cache_key = f"short-url:{path.short_code}"
     cached_url = cache_get(cache_key)
     if cached_url:
+        url_shortener_redirects_total.labels(status="hit").inc()
         return redirect(cached_url, code=302)
 
     url = Url.get_or_none((Url.short_code == path.short_code) & (Url.is_active == True))
     if url is None:
+        logger.warning("Short URL not found: %s", path.short_code)
+        url_shortener_redirects_total.labels(status="miss").inc()
         return error_response("Short URL not found", "NOT_FOUND", 404)
 
     shortener_service.capture_click_event(url, path.short_code)
+    url_shortener_redirects_total.labels(status="hit").inc()
 
     cache_set(cache_key, url.original_url, ttl_seconds=3600)
     return redirect(url.original_url, code=302)
 
 
-@shortener_bp.post("/shorten/bulk", responses={200: BulkLoadResponse, 400: ErrorEnvelope})
+@shortener_bp.post("/shorten/bulk", responses={201: BulkLoadResponse, 400: ErrorEnvelope})
 def bulk_load_urls():
     payload = request.get_json(silent=True) or {}
     filename = str(payload.get("file") or "urls.csv").strip() or "urls.csv"
@@ -71,4 +83,4 @@ def bulk_load_urls():
         loaded_count = shortener_service.bulk_load_urls(filename)
     except ServiceError as exc:
         return error_response(exc.message, exc.code, exc.status, details=exc.details)
-    return {"file": filename, "row_count": requested_count, "loaded": loaded_count}, 200
+    return {"file": filename, "row_count": requested_count, "loaded": loaded_count}, 201

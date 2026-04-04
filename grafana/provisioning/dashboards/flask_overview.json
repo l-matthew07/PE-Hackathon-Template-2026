@@ -1,0 +1,1958 @@
+{
+  "uid": "flask-overview",
+  "title": "Flask App \u2014 Incident Response Overview",
+  "description": "4 Golden Signals + business metrics + host infrastructure + PostgreSQL + SLO error budget.",
+  "tags": [
+    "flask",
+    "incident-response"
+  ],
+  "refresh": "10s",
+  "schemaVersion": 38,
+  "version": 20,
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "graphTooltip": 2,
+  "templating": {
+    "list": [
+      {
+        "name": "endpoint",
+        "type": "query",
+        "label": "Endpoint",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(http_requests_total, endpoint)",
+          "refId": "A"
+        },
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {},
+        "refresh": 2,
+        "sort": 1,
+        "hide": 0
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 20,
+      "type": "stat",
+      "transparent": true,
+      "title": "Service Health",
+      "description": "Live now. Turns red the moment Prometheus can no longer scrape the Flask app.",
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 5,
+        "h": 2
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "up{job=\"flask_app\"}",
+          "legendFormat": "Flask",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#e53935",
+                "value": null
+              },
+              {
+                "color": "#00bcd4",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "DOWN",
+                  "color": "#e53935",
+                  "index": 0
+                },
+                "1": {
+                  "text": "UP",
+                  "color": "#00bcd4",
+                  "index": 1
+                }
+              }
+            }
+          ]
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 21,
+      "type": "stat",
+      "transparent": true,
+      "title": "Error Rate %",
+      "description": "5xx error rate over last 5 min. Populates once Bronze wires http_requests_total.",
+      "gridPos": {
+        "x": 5,
+        "y": 1,
+        "w": 5,
+        "h": 2
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "job:flask_http_error_rate:rate5m * 100",
+          "legendFormat": "Error %",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#00bcd4",
+                "value": null
+              },
+              {
+                "color": "#ff9800",
+                "value": 1
+              },
+              {
+                "color": "#e53935",
+                "value": 5
+              }
+            ]
+          },
+          "noValue": "Awaiting data"
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "id": 22,
+      "type": "stat",
+      "transparent": true,
+      "title": "p95 Latency",
+      "description": "95th percentile request duration. Populates once Bronze wires http_request_duration_seconds.",
+      "gridPos": {
+        "x": 10,
+        "y": 1,
+        "w": 5,
+        "h": 2
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "job:flask_http_request_duration_p95:rate5m * 1000",
+          "legendFormat": "p95",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#00bcd4",
+                "value": null
+              },
+              {
+                "color": "#ff9800",
+                "value": 200
+              },
+              {
+                "color": "#e53935",
+                "value": 500
+              }
+            ]
+          },
+          "noValue": "Awaiting data"
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "id": 23,
+      "type": "stat",
+      "transparent": true,
+      "title": "CPU %",
+      "description": "Host CPU utilisation from node_exporter. Live now.",
+      "gridPos": {
+        "x": 15,
+        "y": 1,
+        "w": 4,
+        "h": 2
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[1m])) * 100)",
+          "legendFormat": "CPU",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#00bcd4",
+                "value": null
+              },
+              {
+                "color": "#ff9800",
+                "value": 70
+              },
+              {
+                "color": "#e53935",
+                "value": 90
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "id": 24,
+      "type": "stat",
+      "transparent": true,
+      "title": "DB Connections",
+      "description": "Live Postgres connections from postgres_exporter. Red at 20 = pool exhaustion.",
+      "gridPos": {
+        "x": 19,
+        "y": 1,
+        "w": 5,
+        "h": 2
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(pg_stat_activity_count{datname=\"hackathon_db\"})",
+          "legendFormat": "Connections",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#00bcd4",
+                "value": null
+              },
+              {
+                "color": "#ff9800",
+                "value": 15
+              },
+              {
+                "color": "#e53935",
+                "value": 20
+              }
+            ]
+          },
+          "noValue": "No data"
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "id": 1,
+      "type": "heatmap",
+      "transparent": true,
+      "title": "Latency \u2014 Distribution Heatmap",
+      "description": "Latency bucket distribution over time. Brighter = more requests in that duration band. Shows distribution shifts instantly during incidents. Populates once Bronze wires http_request_duration_seconds.",
+      "gridPos": {
+        "x": 0,
+        "y": 3,
+        "w": 14,
+        "h": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(http_request_duration_seconds_bucket[5m])) by (le)",
+          "legendFormat": "{{ le }}",
+          "format": "heatmap",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "calculate": false,
+        "cellGap": 1,
+        "color": {
+          "exponent": 0.5,
+          "fill": "dark-blue",
+          "mode": "scheme",
+          "reverse": false,
+          "scale": "exponential",
+          "scheme": "GnBu",
+          "steps": 64
+        },
+        "exemplars": {
+          "color": "rgba(255,0,255,0.7)"
+        },
+        "filterValues": {
+          "le": 1e-09
+        },
+        "legend": {
+          "show": true
+        },
+        "rowsFrame": {
+          "layout": "auto"
+        },
+        "tooltip": {
+          "mode": "single",
+          "showColorScale": false,
+          "yHistogram": true
+        },
+        "yAxis": {
+          "axisPlacement": "left",
+          "decimals": 3,
+          "reverse": false,
+          "unit": "s"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "transparent": true,
+      "title": "Traffic \u2014 Requests per Second",
+      "description": "Incoming request rate by endpoint. Use the Endpoint dropdown to filter to a single route.",
+      "gridPos": {
+        "x": 14,
+        "y": 3,
+        "w": 10,
+        "h": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(http_requests_total{endpoint=~\"$endpoint\"}[2m])) by (endpoint)",
+          "legendFormat": "{{ endpoint }}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "fillOpacity": 20,
+            "gradientMode": "hue",
+            "lineWidth": 2,
+            "showPoints": "always",
+            "pointSize": 4,
+            "axisSoftMin": 0
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "transparent": true,
+      "title": "Errors \u2014 5xx Rate",
+      "description": "Fraction of requests returning 5xx. Background turns red at 5%. Populates once Bronze wires http_requests_total.",
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 10,
+        "h": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(http_requests_total{status_code=~\"5..\"}[5m])) / sum(rate(http_requests_total[5m]))",
+          "legendFormat": "Error Rate",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#00bcd4",
+                "value": null
+              },
+              {
+                "color": "#ff9800",
+                "value": 0.01
+              },
+              {
+                "color": "#e53935",
+                "value": 0.05
+              }
+            ]
+          },
+          "noValue": "No data yet"
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "id": 4,
+      "type": "gauge",
+      "transparent": true,
+      "title": "Saturation \u2014 Active In-Flight Requests",
+      "description": "Current number of requests being processed simultaneously. Populates once Bronze wires active_requests.",
+      "gridPos": {
+        "x": 10,
+        "y": 8,
+        "w": 7,
+        "h": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "active_requests",
+          "legendFormat": "In-flight",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "max": 100,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#00bcd4",
+                "value": null
+              },
+              {
+                "color": "#ff9800",
+                "value": 50
+              },
+              {
+                "color": "#e53935",
+                "value": 80
+              }
+            ]
+          },
+          "noValue": "No data yet"
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "showThresholdMarkers": false
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "transparent": true,
+      "title": "URL Shortener \u2014 Redirect Hit Rate",
+      "description": "Fraction of redirects that resolve vs 404. Populates once Bronze wires url_shortener_redirects_total.",
+      "gridPos": {
+        "x": 17,
+        "y": 8,
+        "w": 7,
+        "h": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(url_shortener_redirects_total{status=\"hit\"}[2m]) / rate(url_shortener_redirects_total[2m])",
+          "legendFormat": "Hit Rate",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(url_shortener_redirects_total[2m])",
+          "legendFormat": "{{ status }}",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "fillOpacity": 20,
+            "gradientMode": "hue",
+            "lineWidth": 2,
+            "showPoints": "always",
+            "pointSize": 4,
+            "axisSoftMin": 0
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "transparent": true,
+      "title": "Saturation \u2014 DB Pool Connections",
+      "description": "Active Postgres connections via app pool. Populates once Bronze wires db_pool_connections_active.",
+      "gridPos": {
+        "x": 0,
+        "y": 13,
+        "w": 8,
+        "h": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "db_pool_connections_active",
+          "legendFormat": "Active Connections",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#00bcd4",
+                "value": null
+              },
+              {
+                "color": "#ff9800",
+                "value": 15
+              },
+              {
+                "color": "#e53935",
+                "value": 20
+              }
+            ]
+          },
+          "noValue": "No data yet"
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "transparent": true,
+      "title": "Traffic \u2014 Request Rate by Status Code",
+      "description": "2xx vs 4xx vs 5xx breakdown over time. Populates once Bronze wires http_requests_total.",
+      "gridPos": {
+        "x": 8,
+        "y": 13,
+        "w": 16,
+        "h": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(http_requests_total[2m])) by (status_code)",
+          "legendFormat": "HTTP {{ status_code }}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "fillOpacity": 20,
+            "gradientMode": "hue",
+            "lineWidth": 2,
+            "showPoints": "always",
+            "pointSize": 4,
+            "axisSoftMin": 0,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      }
+    },
+    {
+      "id": 8,
+      "type": "row",
+      "title": "Infrastructure \u2014 Host Metrics",
+      "gridPos": {
+        "x": 0,
+        "y": 18,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": true,
+      "panels": [
+        {
+          "id": 9,
+          "type": "timeseries",
+          "title": "CPU Usage %",
+          "description": "Host CPU utilisation. Sustained > 80% is a saturation signal.",
+          "gridPos": {
+            "x": 0,
+            "y": 1,
+            "w": 12,
+            "h": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[1m])) * 100)",
+              "legendFormat": "CPU %",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100,
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "#00bcd4",
+                    "value": null
+                  },
+                  {
+                    "color": "#ff9800",
+                    "value": 70
+                  },
+                  {
+                    "color": "#e53935",
+                    "value": 90
+                  }
+                ]
+              },
+              "custom": {
+                "fillOpacity": 20,
+                "gradientMode": "hue",
+                "lineWidth": 2,
+                "showPoints": "always",
+                "pointSize": 4,
+                "axisSoftMin": 0
+              }
+            }
+          },
+          "options": {
+            "tooltip": {
+              "mode": "single"
+            }
+          }
+        },
+        {
+          "id": 10,
+          "type": "timeseries",
+          "title": "Memory Usage %",
+          "description": "Host memory utilisation. Approaching 100% may cause OOM kills.",
+          "gridPos": {
+            "x": 12,
+            "y": 1,
+            "w": 12,
+            "h": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100",
+              "legendFormat": "Memory %",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100,
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "#00bcd4",
+                    "value": null
+                  },
+                  {
+                    "color": "#ff9800",
+                    "value": 75
+                  },
+                  {
+                    "color": "#e53935",
+                    "value": 90
+                  }
+                ]
+              },
+              "custom": {
+                "fillOpacity": 20,
+                "gradientMode": "hue",
+                "lineWidth": 2,
+                "showPoints": "always",
+                "pointSize": 4,
+                "axisSoftMin": 0
+              }
+            }
+          },
+          "options": {
+            "tooltip": {
+              "mode": "single"
+            }
+          }
+        },
+        {
+          "id": 11,
+          "type": "timeseries",
+          "title": "Disk I/O",
+          "description": "Disk read/write throughput. A spike here during slow DB queries confirms I/O bottleneck.",
+          "gridPos": {
+            "x": 0,
+            "y": 9,
+            "w": 12,
+            "h": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "rate(node_disk_read_bytes_total{device!~\"loop.*|nbd.*|ram.*|fd.*\"}[1m])",
+              "legendFormat": "Read \u2014 {{ device }}",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "rate(node_disk_written_bytes_total{device!~\"loop.*|nbd.*|ram.*|fd.*\"}[1m])",
+              "legendFormat": "Write \u2014 {{ device }}",
+              "refId": "B"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "Bps",
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "fillOpacity": 15,
+                "gradientMode": "hue",
+                "lineWidth": 2,
+                "showPoints": "always",
+                "pointSize": 3,
+                "axisSoftMin": 0
+              }
+            }
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          }
+        },
+        {
+          "id": 12,
+          "type": "timeseries",
+          "title": "Network I/O",
+          "description": "Network throughput in/out. Distinguishes CPU-bound vs network-bound slowness.",
+          "gridPos": {
+            "x": 12,
+            "y": 9,
+            "w": 12,
+            "h": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "rate(node_network_receive_bytes_total{device!~\"lo|veth.*|docker.*|br-.*|tunl.*|sit.*|gre.*|ip6.*|erspan.*|gretap.*\"}[1m])",
+              "legendFormat": "In \u2014 {{ device }}",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "rate(node_network_transmit_bytes_total{device!~\"lo|veth.*|docker.*|br-.*|tunl.*|sit.*|gre.*|ip6.*|erspan.*|gretap.*\"}[1m])",
+              "legendFormat": "Out \u2014 {{ device }}",
+              "refId": "B"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "Bps",
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "fillOpacity": 15,
+                "gradientMode": "hue",
+                "lineWidth": 2,
+                "showPoints": "always",
+                "pointSize": 3,
+                "axisSoftMin": 0
+              }
+            }
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "row",
+      "title": "PostgreSQL",
+      "gridPos": {
+        "x": 0,
+        "y": 19,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": true,
+      "panels": [
+        {
+          "id": 14,
+          "type": "stat",
+          "title": "DB \u2014 Active Connections",
+          "description": "Live connections to hackathon_db from postgres_exporter. Red at 20 = pool exhaustion.",
+          "gridPos": {
+            "x": 0,
+            "y": 1,
+            "w": 8,
+            "h": 3
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(pg_stat_activity_count{datname=\"hackathon_db\"})",
+              "legendFormat": "Connections",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "#00bcd4",
+                    "value": null
+                  },
+                  {
+                    "color": "#ff9800",
+                    "value": 15
+                  },
+                  {
+                    "color": "#e53935",
+                    "value": 20
+                  }
+                ]
+              },
+              "noValue": "No data"
+            }
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            },
+            "colorMode": "value",
+            "graphMode": "none"
+          }
+        },
+        {
+          "id": 15,
+          "type": "timeseries",
+          "title": "DB \u2014 Transaction Rate",
+          "description": "Commits and rollbacks per second. A drop during high traffic = DB bottleneck.",
+          "gridPos": {
+            "x": 8,
+            "y": 1,
+            "w": 8,
+            "h": 3
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "rate(pg_stat_database_xact_commit_total{datname=\"hackathon_db\"}[1m])",
+              "legendFormat": "Commits/s",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "rate(pg_stat_database_xact_rollback_total{datname=\"hackathon_db\"}[1m])",
+              "legendFormat": "Rollbacks/s",
+              "refId": "B"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ops",
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "fillOpacity": 15,
+                "gradientMode": "hue",
+                "lineWidth": 2,
+                "showPoints": "always",
+                "pointSize": 3,
+                "axisSoftMin": 0
+              }
+            }
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          }
+        },
+        {
+          "id": 16,
+          "type": "stat",
+          "title": "DB \u2014 Deadlocks / min",
+          "description": "Deadlocks are always a bug. Any non-zero value here warrants investigation.",
+          "gridPos": {
+            "x": 16,
+            "y": 1,
+            "w": 8,
+            "h": 3
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "rate(pg_stat_database_deadlocks_total{datname=\"hackathon_db\"}[1m]) * 60",
+              "legendFormat": "Deadlocks/min",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "#00bcd4",
+                    "value": null
+                  },
+                  {
+                    "color": "#e53935",
+                    "value": 0.1
+                  }
+                ]
+              },
+              "noValue": "0"
+            }
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            },
+            "colorMode": "value",
+            "graphMode": "none"
+          }
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "type": "row",
+      "title": "SLO / Error Budget",
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": true,
+      "panels": [
+        {
+          "id": 18,
+          "type": "gauge",
+          "title": "Error Budget Remaining",
+          "description": "SLO: 99.5% success rate. 100% = full budget, 0% = SLO breached. Populates once Bronze is wired.",
+          "gridPos": {
+            "x": 0,
+            "y": 1,
+            "w": 8,
+            "h": 3
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "clamp_min(job:flask_error_budget_remaining:rate5m * 100, 0)",
+              "legendFormat": "Budget %",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100,
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "#e53935",
+                    "value": null
+                  },
+                  {
+                    "color": "#ff9800",
+                    "value": 25
+                  },
+                  {
+                    "color": "#00bcd4",
+                    "value": 75
+                  }
+                ]
+              },
+              "noValue": "Awaiting data"
+            }
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            },
+            "showThresholdMarkers": false
+          }
+        },
+        {
+          "id": 19,
+          "type": "timeseries",
+          "title": "SLO Compliance Over Time",
+          "description": "Error budget burn rate. > 1.0 means consuming budget faster than the SLO allows.",
+          "gridPos": {
+            "x": 8,
+            "y": 1,
+            "w": 16,
+            "h": 3
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "job:flask_error_budget_burn_rate:rate1h",
+              "legendFormat": "Burn Rate (1x = normal)",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "#00bcd4",
+                    "value": null
+                  },
+                  {
+                    "color": "#ff9800",
+                    "value": 2
+                  },
+                  {
+                    "color": "#e53935",
+                    "value": 5
+                  }
+                ]
+              },
+              "noValue": "Awaiting data"
+            }
+          },
+          "options": {
+            "tooltip": {
+              "mode": "single"
+            },
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 50,
+      "type": "row",
+      "title": "Command Center",
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 40,
+      "type": "stat",
+      "transparent": true,
+      "title": "App Uptime",
+      "description": "How long the Flask app has been continuously up.",
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 3,
+        "h": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "time() - process_start_time_seconds{job=\"flask_app\"}",
+          "legendFormat": "Uptime",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#00bcd4",
+                "value": null
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 41,
+      "type": "stat",
+      "transparent": true,
+      "title": "Total Requests",
+      "description": "All-time request count processed by the app.",
+      "gridPos": {
+        "x": 3,
+        "y": 24,
+        "w": 3,
+        "h": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(http_requests_total)",
+          "legendFormat": "Requests",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#00bcd4",
+                "value": null
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "value_and_name",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 42,
+      "type": "timeseries",
+      "transparent": true,
+      "title": "Latency \u2014 P50 / P95 / P99",
+      "description": "All three percentile lines on one graph. P99 spiking while P50 is flat = tail latency issue.",
+      "gridPos": {
+        "x": 6,
+        "y": 24,
+        "w": 18,
+        "h": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket[2m])) by (le)) * 1000",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[2m])) by (le)) * 1000",
+          "legendFormat": "p95",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[2m])) by (le)) * 1000",
+          "legendFormat": "p99",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "fillOpacity": 15,
+            "gradientMode": "opacity",
+            "lineWidth": 2,
+            "lineInterpolation": "smooth"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p50"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73bf69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p95"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#ff9830",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p99"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#f2495c",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 43,
+      "type": "piechart",
+      "transparent": true,
+      "title": "Traffic by Endpoint",
+      "description": "Share of total requests per endpoint.",
+      "gridPos": {
+        "x": 0,
+        "y": 29,
+        "w": 8,
+        "h": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(http_requests_total) by (endpoint)",
+          "legendFormat": "{{ endpoint }}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          }
+        }
+      },
+      "options": {
+        "pieType": "donut",
+        "displayLabels": [
+          "percent"
+        ],
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "values": [
+            "value",
+            "percent"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 44,
+      "type": "state-timeline",
+      "transparent": true,
+      "title": "Endpoint Activity Timeline",
+      "description": "Green = active traffic, red = silent. Shows which endpoints went quiet during incidents.",
+      "gridPos": {
+        "x": 8,
+        "y": 29,
+        "w": 8,
+        "h": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(http_requests_total[1m])) by (endpoint) > 0",
+          "legendFormat": "{{ endpoint }}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#d44a3a",
+                "value": null
+              },
+              {
+                "color": "#299c46",
+                "value": 0.001
+              }
+            ]
+          },
+          "custom": {
+            "fillOpacity": 90,
+            "lineWidth": 0
+          }
+        }
+      },
+      "options": {
+        "mergeValues": true,
+        "showValue": "never",
+        "alignValue": "center",
+        "rowHeight": 0.8,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      }
+    },
+    {
+      "id": 45,
+      "type": "table",
+      "transparent": true,
+      "title": "Top Endpoints",
+      "description": "Req/s and p95 latency per endpoint.",
+      "gridPos": {
+        "x": 16,
+        "y": 29,
+        "w": 8,
+        "h": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(http_requests_total[2m])) by (endpoint)",
+          "legendFormat": "{{endpoint}}",
+          "refId": "A",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[2m])) by (le, endpoint)) * 1000",
+          "legendFormat": "{{endpoint}}",
+          "refId": "B",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value #A"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Req/s"
+              },
+              {
+                "id": "unit",
+                "value": "reqps"
+              },
+              {
+                "id": "decimals",
+                "value": 3
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value #B"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "p95 (ms)"
+              },
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Req/s"
+          }
+        ],
+        "footer": {
+          "show": false
+        }
+      },
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "endpoint",
+                "Value #A",
+                "Value #B"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 60,
+      "type": "row",
+      "title": "Logs",
+      "gridPos": { "x": 0, "y": 33, "w": 24, "h": 1 },
+      "collapsed": true,
+      "panels": [
+        {
+          "id": 61,
+          "type": "logs",
+          "title": "Application Logs",
+          "description": "Live structured log stream from Loki. Color-coded by level.",
+          "gridPos": { "x": 0, "y": 0, "w": 24, "h": 12 },
+          "datasource": { "type": "loki", "uid": "loki" },
+          "targets": [
+            {
+              "datasource": { "type": "loki", "uid": "loki" },
+              "expr": "{job=\"docker\"} |= ``",
+              "refId": "A"
+            }
+          ],
+          "options": {
+            "showTime": true,
+            "showLabels": true,
+            "showCommonLabels": false,
+            "wrapLogMessage": true,
+            "prettifyLogMessage": false,
+            "enableLogDetails": true,
+            "sortOrder": "Descending",
+            "dedupStrategy": "none"
+          }
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "type": "text",
+      "title": "",
+      "transparent": true,
+      "gridPos": { "x": 0, "y": 34, "w": 24, "h": 2 },
+      "options": {
+        "mode": "html",
+        "content": "<style>\n@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&family=Share+Tech+Mono&display=swap');\n\n/* Rounded panels with cyan border glow */\n.react-grid-item > div:first-child,\n[class*='panel-container'],\n.panel-container {\n  border-radius: 14px !important;\n  overflow: hidden !important;\n  border: 1px solid rgba(0, 188, 212, 0.45) !important;\n  box-shadow: 0 0 28px rgba(0, 188, 212, 0.25), 0 0 8px rgba(0, 188, 212, 0.2), inset 0 1px 0 rgba(0, 188, 212, 0.12) !important;\n}\n\n/* Orbitron for panel titles */\n[class*='panel-title'] h6,\n[class*='panel-title'] span,\n[class*='title-text'] {\n  font-family: 'Orbitron', sans-serif !important;\n  font-size: 10px !important;\n  font-weight: 600 !important;\n  letter-spacing: 0.1em !important;\n  text-transform: uppercase !important;\n  color: rgba(0, 229, 255, 0.85) !important;\n}\n\n/* Share Tech Mono for all values and body text */\nbody,\n[class*='stat-text'],\n[class*='stat-value'],\n[class*='graph-legend'],\n[class*='gauge'],\nsvg text,\n.grafana-app {\n  font-family: 'Share Tech Mono', monospace !important;\n}\n</style>"
+      }
+    }
+  ]
+}
