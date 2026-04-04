@@ -32,6 +32,7 @@
     {
       "id": 20,
       "type": "stat",
+      "transparent": true,
       "title": "Service Health",
       "description": "Live now. Turns red the moment Prometheus can no longer scrape the Flask app.",
       "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
@@ -76,6 +77,7 @@
     {
       "id": 21,
       "type": "stat",
+      "transparent": true,
       "title": "Error Rate %",
       "description": "5xx error rate over last 5 min. Populates once Bronze wires http_requests_total.",
       "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
@@ -106,7 +108,7 @@
       },
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"] },
-        "colorMode": "background",
+        "colorMode": "value",
         "graphMode": "area",
         "textMode": "value_and_name"
       }
@@ -114,6 +116,7 @@
     {
       "id": 22,
       "type": "stat",
+      "transparent": true,
       "title": "p95 Latency",
       "description": "95th percentile request duration. Populates once Bronze wires http_request_duration_seconds.",
       "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
@@ -144,7 +147,7 @@
       },
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"] },
-        "colorMode": "background",
+        "colorMode": "value",
         "graphMode": "area",
         "textMode": "value_and_name"
       }
@@ -152,6 +155,7 @@
     {
       "id": 23,
       "type": "stat",
+      "transparent": true,
       "title": "CPU %",
       "description": "Host CPU utilisation from node_exporter. Live now.",
       "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
@@ -181,7 +185,7 @@
       },
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"] },
-        "colorMode": "background",
+        "colorMode": "value",
         "graphMode": "area",
         "textMode": "value_and_name"
       }
@@ -189,6 +193,7 @@
     {
       "id": 24,
       "type": "stat",
+      "transparent": true,
       "title": "DB Connections",
       "description": "Live Postgres connections from postgres_exporter. Red at 20 = pool exhaustion.",
       "gridPos": { "x": 16, "y": 0, "w": 4, "h": 4 },
@@ -218,14 +223,15 @@
       },
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"] },
-        "colorMode": "background",
-        "graphMode": "none",
+        "colorMode": "value",
+        "graphMode": "area",
         "textMode": "value_and_name"
       }
     },
     {
       "id": 25,
       "type": "stat",
+      "transparent": true,
       "title": "App Uptime",
       "description": "Time since the Flask process last started. Live now.",
       "gridPos": { "x": 20, "y": 0, "w": 4, "h": 2 },
@@ -255,6 +261,7 @@
     {
       "id": 26,
       "type": "stat",
+      "transparent": true,
       "title": "Total Requests",
       "description": "Cumulative requests since startup. Populates once Bronze wires http_requests_total.",
       "gridPos": { "x": 20, "y": 2, "w": 4, "h": 2 },
@@ -284,6 +291,7 @@
     {
       "id": 1,
       "type": "heatmap",
+      "transparent": true,
       "title": "Latency — Distribution Heatmap",
       "description": "Latency bucket distribution over time. Brighter = more requests in that duration band. Shows distribution shifts instantly during incidents. Populates once Bronze wires http_request_duration_seconds.",
       "gridPos": { "x": 0, "y": 4, "w": 14, "h": 8 },
@@ -329,6 +337,7 @@
     {
       "id": 2,
       "type": "timeseries",
+      "transparent": true,
       "title": "Traffic — Requests per Second",
       "description": "Incoming request rate by endpoint. Use the Endpoint dropdown to filter to a single route.",
       "gridPos": { "x": 14, "y": 4, "w": 10, "h": 8 },
@@ -348,11 +357,12 @@
           "custom": { "fillOpacity": 20, "gradientMode": "hue", "lineWidth": 2, "showPoints": "always", "pointSize": 4, "axisSoftMin": 0 }
         }
       },
-      "options": { "tooltip": { "mode": "multi" } }
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true } }
     },
     {
       "id": 3,
       "type": "stat",
+      "transparent": true,
       "title": "Errors — 5xx Rate",
       "description": "Fraction of requests returning 5xx. Background turns red at 5%. Populates once Bronze wires http_requests_total.",
       "gridPos": { "x": 0, "y": 12, "w": 10, "h": 8 },
@@ -382,7 +392,7 @@
       },
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"] },
-        "colorMode": "background",
+        "colorMode": "value",
         "graphMode": "area",
         "textMode": "value_and_name"
       }
@@ -390,6 +400,7 @@
     {
       "id": 4,
       "type": "gauge",
+      "transparent": true,
       "title": "Saturation — Active In-Flight Requests",
       "description": "Current number of requests being processed simultaneously. Populates once Bronze wires active_requests.",
       "gridPos": { "x": 10, "y": 12, "w": 7, "h": 8 },
@@ -419,11 +430,12 @@
           "noValue": "No data yet"
         }
       },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } }
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdMarkers": false }
     },
     {
       "id": 5,
       "type": "timeseries",
+      "transparent": true,
       "title": "URL Shortener — Redirect Hit Rate",
       "description": "Fraction of redirects that resolve vs 404. Populates once Bronze wires url_shortener_redirects_total.",
       "gridPos": { "x": 17, "y": 12, "w": 7, "h": 8 },
@@ -454,6 +466,7 @@
     {
       "id": 6,
       "type": "stat",
+      "transparent": true,
       "title": "Saturation — DB Pool Connections",
       "description": "Active Postgres connections via app pool. Populates once Bronze wires db_pool_connections_active.",
       "gridPos": { "x": 0, "y": 20, "w": 8, "h": 8 },
@@ -481,11 +494,12 @@
           "noValue": "No data yet"
         }
       },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" }
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" }
     },
     {
       "id": 7,
       "type": "timeseries",
+      "transparent": true,
       "title": "Traffic — Request Rate by Status Code",
       "description": "2xx vs 4xx vs 5xx breakdown over time. Populates once Bronze wires http_requests_total.",
       "gridPos": { "x": 8, "y": 20, "w": 16, "h": 8 },
@@ -502,10 +516,10 @@
         "defaults": {
           "unit": "reqps",
           "color": { "mode": "palette-classic" },
-          "custom": { "fillOpacity": 20, "gradientMode": "hue", "lineWidth": 2, "showPoints": "always", "pointSize": 4, "axisSoftMin": 0 }
+          "custom": { "fillOpacity": 20, "gradientMode": "hue", "lineWidth": 2, "showPoints": "always", "pointSize": 4, "axisSoftMin": 0, "stacking": { "mode": "normal", "group": "A" } }
         }
       },
-      "options": { "tooltip": { "mode": "multi" } }
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true } }
     },
     {
       "id": 8,
@@ -606,10 +620,11 @@
           "fieldConfig": {
             "defaults": {
               "unit": "Bps",
-              "color": { "mode": "palette-classic" }
+              "color": { "mode": "palette-classic" },
+              "custom": { "fillOpacity": 15, "gradientMode": "hue", "lineWidth": 2, "showPoints": "always", "pointSize": 3, "axisSoftMin": 0 }
             }
           },
-          "options": { "tooltip": { "mode": "multi" } }
+          "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true } }
         },
         {
           "id": 12,
@@ -635,10 +650,11 @@
           "fieldConfig": {
             "defaults": {
               "unit": "Bps",
-              "color": { "mode": "palette-classic" }
+              "color": { "mode": "palette-classic" },
+              "custom": { "fillOpacity": 15, "gradientMode": "hue", "lineWidth": 2, "showPoints": "always", "pointSize": 3, "axisSoftMin": 0 }
             }
           },
-          "options": { "tooltip": { "mode": "multi" } }
+          "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true } }
         }
       ]
     },
@@ -679,7 +695,7 @@
               "noValue": "No data"
             }
           },
-          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" }
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area" }
         },
         {
           "id": 15,
@@ -705,10 +721,11 @@
           "fieldConfig": {
             "defaults": {
               "unit": "ops",
-              "color": { "mode": "palette-classic" }
+              "color": { "mode": "palette-classic" },
+              "custom": { "fillOpacity": 15, "gradientMode": "hue", "lineWidth": 2, "showPoints": "always", "pointSize": 3, "axisSoftMin": 0 }
             }
           },
-          "options": { "tooltip": { "mode": "multi" } }
+          "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true } }
         },
         {
           "id": 16,
@@ -739,7 +756,7 @@
               "noValue": "0"
             }
           },
-          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" }
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" }
         }
       ]
     },
@@ -782,7 +799,7 @@
               "noValue": "Awaiting data"
             }
           },
-          "options": { "reduceOptions": { "calcs": ["lastNotNull"] } }
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdMarkers": false }
         },
         {
           "id": 19,
@@ -814,7 +831,7 @@
               "noValue": "Awaiting data"
             }
           },
-          "options": { "tooltip": { "mode": "single" } }
+          "options": { "tooltip": { "mode": "single" }, "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true } }
         }
       ]
     },
@@ -829,6 +846,7 @@
     {
       "id": 40,
       "type": "stat",
+      "transparent": true,
       "title": "App Uptime",
       "description": "How long the Flask app has been continuously up.",
       "gridPos": { "x": 0, "y": 34, "w": 3, "h": 8 },
@@ -850,7 +868,7 @@
       },
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"] },
-        "colorMode": "background",
+        "colorMode": "value",
         "graphMode": "none",
         "textMode": "value_and_name",
         "orientation": "auto"
@@ -859,6 +877,7 @@
     {
       "id": 41,
       "type": "stat",
+      "transparent": true,
       "title": "Total Requests",
       "description": "All-time request count processed by the app.",
       "gridPos": { "x": 3, "y": 34, "w": 3, "h": 8 },
@@ -880,7 +899,7 @@
       },
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"] },
-        "colorMode": "background",
+        "colorMode": "value",
         "graphMode": "area",
         "textMode": "value_and_name",
         "orientation": "auto"
@@ -889,6 +908,7 @@
     {
       "id": 42,
       "type": "timeseries",
+      "transparent": true,
       "title": "Latency — P50 / P95 / P99",
       "description": "All three percentile lines on one graph. P99 spiking while P50 is flat = tail latency issue.",
       "gridPos": { "x": 6, "y": 34, "w": 18, "h": 8 },
@@ -929,6 +949,7 @@
     {
       "id": 43,
       "type": "piechart",
+      "transparent": true,
       "title": "Traffic by Endpoint",
       "description": "Share of total requests per endpoint.",
       "gridPos": { "x": 0, "y": 42, "w": 8, "h": 8 },
@@ -954,6 +975,7 @@
     {
       "id": 44,
       "type": "state-timeline",
+      "transparent": true,
       "title": "Endpoint Activity Timeline",
       "description": "Green = active traffic, red = silent. Shows which endpoints went quiet during incidents.",
       "gridPos": { "x": 8, "y": 42, "w": 8, "h": 8 },
@@ -978,6 +1000,7 @@
     {
       "id": 45,
       "type": "table",
+      "transparent": true,
       "title": "Top Endpoints",
       "description": "Req/s and p95 latency per endpoint.",
       "gridPos": { "x": 16, "y": 42, "w": 8, "h": 8 },
