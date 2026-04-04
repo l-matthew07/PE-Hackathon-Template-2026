@@ -73,14 +73,24 @@ def create_app():
         http_requests_total,
     )
 
+    _SKIP_PATHS = ("/admin", "/metrics", "/health", "/docs", "/openapi", "/static")
+
+    def _should_skip():
+        return request.path.startswith(_SKIP_PATHS)
+
     @app.before_request
     def _before():
         g.start_time = time.time()
         g.request_id = str(uuid.uuid4())
-        active_requests.inc()
+        if not _should_skip():
+            active_requests.inc()
+        g.skip_metrics = _should_skip()
 
     @app.after_request
     def _after(response):
+        if g.get("skip_metrics"):
+            return response
+
         active_requests.dec()
         duration = time.time() - g.start_time
         endpoint = request.endpoint or "unknown"

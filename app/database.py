@@ -40,13 +40,17 @@ def init_db(app):
         except Exception:
             pass  # another worker already created the tables — safe to ignore
 
+    from app.routes.metrics import db_pool_connections_active
+
     @app.before_request
     def _db_connect():
         if not db.is_closed():
             db.close()
         db.connect()
+        db_pool_connections_active.inc()
 
     @app.teardown_appcontext
     def _db_close(exc):
         if not db.is_closed():
             db.close()
+            db_pool_connections_active.dec()
