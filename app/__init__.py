@@ -1,4 +1,6 @@
+import logging
 import time
+import uuid
 
 from dotenv import load_dotenv
 from flask import Flask, g, jsonify, request
@@ -7,7 +9,10 @@ from werkzeug.exceptions import HTTPException
 from app.config import get_settings
 from app.database import db, init_db
 from app.lib.api import error_response
+from app.logging_config import setup_logging
 from app.routes import register_routes
+
+_logger = logging.getLogger(__name__)
 
 
 def create_app():
@@ -15,6 +20,9 @@ def create_app():
     get_settings()
 
     app = Flask(__name__)
+
+    # Structured JSON logging — must be first so all subsequent logs are JSON
+    setup_logging(app)
 
     init_db(app)
 
@@ -51,6 +59,7 @@ def create_app():
     @app.before_request
     def _before():
         g.start_time = time.time()
+        g.request_id = str(uuid.uuid4())
         active_requests.inc()
 
     @app.after_request
@@ -66,6 +75,29 @@ def create_app():
             endpoint=endpoint,
             status_code=response.status_code,
         ).inc()
+
+        # Structured request log — level matches severity
+        status = response.status_code
+        log_level = (
+            logging.ERROR if status >= 500
+            else logging.WARNING if status >= 400
+            else logging.INFO
+        )
+        _logger.log(
+            log_level,
+            "%s %s -> %d (%.1fms)",
+            request.method,
+            request.path,
+            status,
+            duration * 1000,
+            extra={
+                "http_method": request.method,
+                "http_path": request.path,
+                "http_status": status,
+                "duration_ms": round(duration * 1000, 1),
+                "client_ip": request.remote_addr,
+            },
+        )
         return response
 
     @app.route("/health")
