@@ -107,9 +107,7 @@ services:
       - --storage.tsdb.path=/prometheus
       - --web.enable-lifecycle
     depends_on:
-      web1:
-        condition: service_healthy
-      web2:
+      web:
         condition: service_healthy
     restart: unless-stopped
 
