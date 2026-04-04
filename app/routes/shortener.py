@@ -74,7 +74,7 @@ def resolve_short_url(path: ShortCodePath):
     return redirect(url.original_url, code=302)
 
 
-@shortener_bp.post("/shorten/bulk", responses={200: BulkLoadResponse, 400: ErrorEnvelope})
+@shortener_bp.post("/shorten/bulk", responses={201: BulkLoadResponse, 400: ErrorEnvelope})
 def bulk_load_urls():
     payload = request.get_json(silent=True) or {}
     filename = str(payload.get("file") or "urls.csv").strip() or "urls.csv"
@@ -83,4 +83,4 @@ def bulk_load_urls():
         loaded_count = shortener_service.bulk_load_urls(filename)
     except ServiceError as exc:
         return error_response(exc.message, exc.code, exc.status, details=exc.details)
-    return {"file": filename, "row_count": requested_count, "loaded": loaded_count}, 200
+    return {"file": filename, "row_count": requested_count, "loaded": loaded_count}, 201
