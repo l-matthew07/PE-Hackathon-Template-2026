@@ -5,7 +5,7 @@
   "tags": ["flask", "incident-response"],
   "refresh": "10s",
   "schemaVersion": 38,
-  "version": 10,
+  "version": 12,
   "time": { "from": "now-1h", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
@@ -219,7 +219,7 @@
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"] },
         "colorMode": "background",
-        "graphMode": "area",
+        "graphMode": "none",
         "textMode": "value_and_name"
       }
     },
@@ -621,7 +621,7 @@
               "noValue": "No data"
             }
           },
-          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" }
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" }
         },
         {
           "id": 15,
