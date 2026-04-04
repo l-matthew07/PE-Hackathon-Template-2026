@@ -95,7 +95,5 @@ def update_url(url_id: int):
 
 @urls_bp.delete("/<int:url_id>")
 def delete_url(url_id: int):
-    deleted = Url.delete().where(Url.id == url_id).execute()
-    if deleted == 0:
-        return "", 204
+    Url.delete().where(Url.id == url_id).execute()
     return "", 204

@@ -4,11 +4,18 @@ from app.cache import cache_get, cache_set
 from app.config import get_settings
 from app.lib.api import error_response
 from app.models.url import Url
+from app.routes.bulk import register_bulk_load_endpoint
 from app.services.errors import ServiceError
 from app.services.shortener_service import ShortenerService
 
 shortener_bp = Blueprint("shortener", __name__)
 shortener_service = ShortenerService()
+register_bulk_load_endpoint(
+    shortener_bp,
+    shortener_service.bulk_load_urls,
+    route="/shorten/bulk",
+    default_file="urls.csv",
+)
 
 
 def _base_url() -> str:

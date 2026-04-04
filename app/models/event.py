@@ -1,13 +1,13 @@
-from peewee import AutoField, CharField, DateTimeField, ForeignKeyField, TextField
+from peewee import AutoField, CharField, DateTimeField, ForeignKeyField, IntegerField, TextField
 
 from app.database import BaseModel
-from app.models.url import Url
 from app.models.user import User
 
 
 class Event(BaseModel):
     id = AutoField()
-    url = ForeignKeyField(Url, backref="events")
+    # url_id is intentionally not a foreign key so event logs survive URL deletes.
+    url_id = IntegerField()
     user = ForeignKeyField(User, backref="events")
     event_type = CharField()
     timestamp = DateTimeField()

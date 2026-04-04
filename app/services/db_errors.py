@@ -59,5 +59,5 @@ def classify_url_integrity_error(exc: IntegrityError):
 def classify_event_integrity_error(exc: IntegrityError):
     message = str(exc).lower()
     if "foreign key" in message:
-        raise ValidationError("url_id and user_id must reference existing records")
+        raise ValidationError("user_id must reference an existing user")
     raise ValidationError("Invalid event payload")

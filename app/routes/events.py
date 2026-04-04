@@ -5,11 +5,17 @@ from flask import Blueprint, jsonify, request
 from app.lib.api import error_response, list_response
 from app.lib.utils import format_datetime, parse_pagination
 from app.models.event import Event
+from app.routes.bulk import register_bulk_load_endpoint
 from app.services.errors import ServiceError
 from app.services.events_service import EventsService
 
 events_bp = Blueprint("events", __name__, url_prefix="/events")
 events_service = EventsService()
+register_bulk_load_endpoint(
+    events_bp,
+    events_service.bulk_load_events,
+    default_file="events.csv",
+)
 
 def _serialize_details(value: object):
     if value is None or value == "":
@@ -23,10 +29,15 @@ def _serialize_details(value: object):
 
 
 def _serialize_event(event: Event) -> dict:
+    user_id = getattr(event, "user_id", None)
+    if user_id is None:
+        user_value = getattr(event, "user", None)
+        user_id = getattr(user_value, "id", None) if user_value is not None else None
+
     return {
         "id": event.id,
-        "url_id": event.url.id if event.url is not None else None,
-        "user_id": event.user.id if event.user is not None else None,
+        "url_id": event.url_id,
+        "user_id": user_id,
         "event_type": event.event_type,
         "timestamp": format_datetime(event.timestamp),
         "details": _serialize_details(event.details),
@@ -46,7 +57,7 @@ def list_events():
 
     url_id = request.args.get("url_id", type=int)
     if url_id is not None:
-        query = query.where(Event.url == url_id)
+        query = query.where(Event.url_id == url_id)
 
     event_type = request.args.get("event_type")
     if event_type:
