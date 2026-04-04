@@ -181,6 +181,18 @@ async def escalate(
     print(f"Escalated {alert_key} to tier {next_tier} ({role_name})", flush=True)
 
 
+def get_active_alertmanager_keys() -> set[str]:
+    """Return the set of alertname values currently active (firing) in Alertmanager."""
+    try:
+        req = urllib.request.Request(f"{ALERTMANAGER_URL}/api/v2/alerts")
+        with urllib.request.urlopen(req) as resp:
+            alerts = json.loads(resp.read())
+        return {a["labels"]["alertname"] for a in alerts if a["status"]["state"] != "suppressed"}
+    except Exception as e:
+        print(f"Failed to query Alertmanager alerts: {e}", flush=True)
+        return set()
+
+
 async def auto_escalation_loop() -> None:
     await client.wait_until_ready()
     channel = client.get_channel(CHANNEL_ID)
@@ -192,9 +204,20 @@ async def auto_escalation_loop() -> None:
             continue
 
         now = datetime.now(timezone.utc)
+        active_in_am = get_active_alertmanager_keys()
 
         for alert_key, state in list(active_alerts.items()):
-            if state.get("acknowledged") or state.get("resolved"):
+            if state.get("resolved"):
+                continue
+
+            # If alert was acknowledged (silenced) and is no longer in Alertmanager, it resolved
+            if state.get("acknowledged") and alert_key not in active_in_am:
+                state["resolved"] = True
+                print(f"Silenced alert resolved: {alert_key}", flush=True)
+                await channel.send(
+                    f"✅ **{alert_key}** has been resolved."
+                )
+                asyncio.get_event_loop().create_task(close_incident_channel(alert_key))
                 continue
 
             current_tier = state["tier"]
