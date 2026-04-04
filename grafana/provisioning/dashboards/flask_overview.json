@@ -9,7 +9,7 @@
   "time": { "from": "now-1h", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
-  "graphTooltip": 1,
+  "graphTooltip": 2,
   "templating": {
     "list": [
       {
@@ -34,7 +34,7 @@
       "type": "stat",
       "title": "Service Health",
       "description": "Live now. Turns red the moment Prometheus can no longer scrape the Flask app.",
-      "gridPos": { "x": 0, "y": 0, "w": 5, "h": 4 },
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -78,7 +78,7 @@
       "type": "stat",
       "title": "Error Rate %",
       "description": "5xx error rate over last 5 min. Populates once Bronze wires http_requests_total.",
-      "gridPos": { "x": 5, "y": 0, "w": 5, "h": 4 },
+      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -116,7 +116,7 @@
       "type": "stat",
       "title": "p95 Latency",
       "description": "95th percentile request duration. Populates once Bronze wires http_request_duration_seconds.",
-      "gridPos": { "x": 10, "y": 0, "w": 5, "h": 4 },
+      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -154,7 +154,7 @@
       "type": "stat",
       "title": "CPU %",
       "description": "Host CPU utilisation from node_exporter. Live now.",
-      "gridPos": { "x": 15, "y": 0, "w": 4, "h": 4 },
+      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -191,7 +191,7 @@
       "type": "stat",
       "title": "DB Connections",
       "description": "Live Postgres connections from postgres_exporter. Red at 20 = pool exhaustion.",
-      "gridPos": { "x": 19, "y": 0, "w": 5, "h": 4 },
+      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 4 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -219,6 +219,64 @@
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"] },
         "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "id": 25,
+      "type": "stat",
+      "title": "App Uptime",
+      "description": "Time since the Flask process last started. Live now.",
+      "gridPos": { "x": 20, "y": 0, "w": 4, "h": 2 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "time() - process_start_time_seconds{job=\"flask_app\"}",
+          "legendFormat": "Uptime",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dtdhms",
+          "color": { "mode": "fixed", "fixedColor": "#00bcd4" },
+          "noValue": "Awaiting data"
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "id": 26,
+      "type": "stat",
+      "title": "Total Requests",
+      "description": "Cumulative requests since startup. Populates once Bronze wires http_requests_total.",
+      "gridPos": { "x": 20, "y": 2, "w": 4, "h": 2 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(http_requests_total)",
+          "legendFormat": "Requests",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "fixed", "fixedColor": "#00bcd4" },
+          "noValue": "Awaiting data"
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value",
         "graphMode": "none",
         "textMode": "value_and_name"
       }
@@ -287,7 +345,7 @@
         "defaults": {
           "unit": "reqps",
           "color": { "mode": "palette-classic" },
-          "custom": { "fillOpacity": 20, "gradientMode": "opacity", "lineWidth": 2 }
+          "custom": { "fillOpacity": 20, "gradientMode": "hue", "lineWidth": 2, "showPoints": "always", "pointSize": 4, "axisSoftMin": 0 }
         }
       },
       "options": { "tooltip": { "mode": "multi" } }
@@ -388,7 +446,7 @@
         "defaults": {
           "unit": "percentunit",
           "color": { "mode": "palette-classic" },
-          "custom": { "fillOpacity": 20, "gradientMode": "opacity", "lineWidth": 2 }
+          "custom": { "fillOpacity": 20, "gradientMode": "hue", "lineWidth": 2, "showPoints": "always", "pointSize": 4, "axisSoftMin": 0 }
         }
       },
       "options": { "tooltip": { "mode": "multi" } }
@@ -444,7 +502,7 @@
         "defaults": {
           "unit": "reqps",
           "color": { "mode": "palette-classic" },
-          "custom": { "fillOpacity": 20, "gradientMode": "opacity", "lineWidth": 2 }
+          "custom": { "fillOpacity": 20, "gradientMode": "hue", "lineWidth": 2, "showPoints": "always", "pointSize": 4, "axisSoftMin": 0 }
         }
       },
       "options": { "tooltip": { "mode": "multi" } }
@@ -485,7 +543,7 @@
                   { "color": "#e53935", "value": 90 }
                 ]
               },
-              "custom": { "fillOpacity": 20, "gradientMode": "opacity", "lineWidth": 2 }
+              "custom": { "fillOpacity": 20, "gradientMode": "hue", "lineWidth": 2, "showPoints": "always", "pointSize": 4, "axisSoftMin": 0 }
             }
           },
           "options": { "tooltip": { "mode": "single" } }
@@ -519,7 +577,7 @@
                   { "color": "#e53935", "value": 90 }
                 ]
               },
-              "custom": { "fillOpacity": 20, "gradientMode": "opacity", "lineWidth": 2 }
+              "custom": { "fillOpacity": 20, "gradientMode": "hue", "lineWidth": 2, "showPoints": "always", "pointSize": 4, "axisSoftMin": 0 }
             }
           },
           "options": { "tooltip": { "mode": "single" } }
@@ -964,7 +1022,7 @@
       "gridPos": { "x": 0, "y": 31, "w": 24, "h": 2 },
       "options": {
         "mode": "html",
-        "content": "<style>\n@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&family=Share+Tech+Mono&display=swap');\n\n/* Rounded panels with cyan border glow */\n.react-grid-item > div:first-child,\n[class*='panel-container'],\n.panel-container {\n  border-radius: 14px !important;\n  overflow: hidden !important;\n  border: 1px solid rgba(0, 188, 212, 0.18) !important;\n  box-shadow: 0 0 18px rgba(0, 188, 212, 0.07), inset 0 1px 0 rgba(0, 188, 212, 0.05) !important;\n}\n\n/* Orbitron for panel titles */\n[class*='panel-title'] h6,\n[class*='panel-title'] span,\n[class*='title-text'] {\n  font-family: 'Orbitron', sans-serif !important;\n  font-size: 10px !important;\n  font-weight: 600 !important;\n  letter-spacing: 0.1em !important;\n  text-transform: uppercase !important;\n  color: rgba(0, 229, 255, 0.85) !important;\n}\n\n/* Share Tech Mono for all values and body text */\nbody,\n[class*='stat-text'],\n[class*='stat-value'],\n[class*='graph-legend'],\n[class*='gauge'],\nsvg text,\n.grafana-app {\n  font-family: 'Share Tech Mono', monospace !important;\n}\n</style>"
+        "content": "<style>\n@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&family=Share+Tech+Mono&display=swap');\n\n/* Rounded panels with cyan border glow */\n.react-grid-item > div:first-child,\n[class*='panel-container'],\n.panel-container {\n  border-radius: 14px !important;\n  overflow: hidden !important;\n  border: 1px solid rgba(0, 188, 212, 0.45) !important;\n  box-shadow: 0 0 28px rgba(0, 188, 212, 0.25), 0 0 8px rgba(0, 188, 212, 0.2), inset 0 1px 0 rgba(0, 188, 212, 0.12) !important;\n}\n\n/* Orbitron for panel titles */\n[class*='panel-title'] h6,\n[class*='panel-title'] span,\n[class*='title-text'] {\n  font-family: 'Orbitron', sans-serif !important;\n  font-size: 10px !important;\n  font-weight: 600 !important;\n  letter-spacing: 0.1em !important;\n  text-transform: uppercase !important;\n  color: rgba(0, 229, 255, 0.85) !important;\n}\n\n/* Share Tech Mono for all values and body text */\nbody,\n[class*='stat-text'],\n[class*='stat-value'],\n[class*='graph-legend'],\n[class*='gauge'],\nsvg text,\n.grafana-app {\n  font-family: 'Share Tech Mono', monospace !important;\n}\n</style>"
       }
     }
   ]
