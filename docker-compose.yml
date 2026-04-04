@@ -135,6 +135,24 @@ services:
       - "9094:9094"
     restart: unless-stopped
 
+  discord-bot:
+    image: python:3.13-alpine
+    command: sh -c "pip install --quiet discord.py && python /app/discord_bot.py"
+    volumes:
+      - ./monitoring/discord_bot.py:/app/discord_bot.py:ro
+    environment:
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN}
+      DISCORD_ALERT_CHANNEL_ID: ${DISCORD_ALERT_CHANNEL_ID}
+      ALERTMANAGER_URL: http://alertmanager:9093
+      DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:-1490040458481762384}
+      DISCORD_INCIDENT_CATEGORY_ID: ${DISCORD_INCIDENT_CATEGORY_ID:-1490097852096053418}
+      DISCORD_ONCALL_ROLE_ID: ${DISCORD_ONCALL_ROLE_ID:-1490051693251919962}
+      DISCORD_SENIOR_ROLE_ID: ${DISCORD_SENIOR_ROLE_ID:-1490081907839471908}
+      DISCORD_LEAD_ROLE_ID: ${DISCORD_LEAD_ROLE_ID:-1490082322383376526}
+    depends_on:
+      - alertmanager
+    restart: unless-stopped
+
 volumes:
   pgdata:
   redisdata:
