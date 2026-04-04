@@ -1,6 +1,6 @@
-import os
-
 from peewee import DatabaseProxy, Model, PostgresqlDatabase
+
+from app.config import get_settings
 
 db = DatabaseProxy()
 
@@ -11,12 +11,13 @@ class BaseModel(Model):
 
 
 def init_db(app):
+    settings = get_settings()
     database = PostgresqlDatabase(
-        os.environ.get("DATABASE_NAME", "hackathon_db"),
-        host=os.environ.get("DATABASE_HOST", "localhost"),
-        port=int(os.environ.get("DATABASE_PORT", 5432)),
-        user=os.environ.get("DATABASE_USER", "postgres"),
-        password=os.environ.get("DATABASE_PASSWORD", "postgres"),
+        settings.database_name,
+        host=settings.database_host,
+        port=settings.database_port,
+        user=settings.database_user,
+        password=settings.database_password,
     )
     db.initialize(database)
 

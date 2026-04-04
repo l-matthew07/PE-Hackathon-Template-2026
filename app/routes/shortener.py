@@ -1,33 +1,18 @@
-import os
-import secrets
-import string
-from datetime import datetime
-import json
-from urllib.parse import urlparse
-
 from flask import Blueprint, jsonify, redirect, request
-from peewee import IntegrityError
 
 from app.cache import cache_get, cache_set
-from app.models.event import Event
+from app.config import get_settings
+from app.lib.api import error_response
 from app.models.url import Url
+from app.services.errors import ServiceError
+from app.services.shortener_service import ShortenerService
 
 shortener_bp = Blueprint("shortener", __name__)
-
-_ALPHABET = string.ascii_letters + string.digits
-
-
-def _is_valid_url(value: str) -> bool:
-    parsed = urlparse(value)
-    return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
-
-
-def _generate_code(length: int = 6) -> str:
-    return "".join(secrets.choice(_ALPHABET) for _ in range(length))
+shortener_service = ShortenerService()
 
 
 def _base_url() -> str:
-    configured = os.environ.get("APP_BASE_URL")
+    configured = get_settings().app_base_url
     if configured:
         return configured.rstrip("/")
     return request.host_url.rstrip("/")
@@ -36,33 +21,20 @@ def _base_url() -> str:
 @shortener_bp.post("/shorten")
 def shorten_url():
     payload = request.get_json(silent=True) or {}
-    original_url = (payload.get("url") or payload.get("original_url") or "").strip()
-    title = (payload.get("title") or "").strip() or None
 
-    if not original_url or not _is_valid_url(original_url):
-        return jsonify(error="Please provide a valid http/https URL in 'url'"), 400
+    try:
+        url = shortener_service.create_short_url(payload)
+    except ServiceError as exc:
+        return error_response(exc.message, exc.code, exc.status, details=exc.details)
 
-    for _ in range(10):
-        code = _generate_code()
-        try:
-            url = Url.create(
-                original_url=original_url,
-                short_code=code,
-                title=title,
-                updated_at=datetime.utcnow(),
-            )
-            return (
-                jsonify(
-                    original_url=url.original_url,
-                    short_code=url.short_code,
-                    short_url=f"{_base_url()}/{url.short_code}",
-                ),
-                201,
-            )
-        except IntegrityError:
-            continue
-
-    return jsonify(error="Could not generate a unique short code. Please retry."), 500
+    return (
+        jsonify(
+            original_url=url.original_url,
+            short_code=url.short_code,
+            short_url=f"{_base_url()}/{url.short_code}",
+        ),
+        201,
+    )
 
 
 @shortener_bp.get("/<short_code>")
@@ -74,19 +46,9 @@ def resolve_short_url(short_code: str):
 
     url = Url.get_or_none((Url.short_code == short_code) & (Url.is_active == True))
     if url is None:
-        return jsonify(error="Short URL not found"), 404
+        return error_response("Short URL not found", "NOT_FOUND", 404)
 
-    if url.user_id is not None:
-        try:
-            Event.create(
-                url_id=url.id,
-                user_id=url.user_id,
-                event_type="click",
-                timestamp=datetime.utcnow(),
-                details=json.dumps({"short_code": short_code}),
-            )
-        except IntegrityError:
-            pass
+    shortener_service.capture_click_event(url, short_code)
 
     cache_set(cache_key, url.original_url, ttl_seconds=3600)
     return redirect(url.original_url, code=302)

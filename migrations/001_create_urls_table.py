@@ -30,6 +30,7 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
         """
     )
     migrator.sql("CREATE INDEX IF NOT EXISTS url_short_code_idx ON url (short_code);")
+    migrator.sql("CREATE INDEX IF NOT EXISTS url_user_id_idx ON url (user_id);")
     migrator.sql(
         """
         CREATE TABLE IF NOT EXISTS event (
@@ -42,6 +43,8 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
         );
         """
     )
+    migrator.sql("CREATE INDEX IF NOT EXISTS event_url_id_idx ON event (url_id);")
+    migrator.sql("CREATE INDEX IF NOT EXISTS event_user_id_idx ON event (user_id);")
 
 
 def rollback(migrator: Migrator, database: pw.Database, *, fake=False):

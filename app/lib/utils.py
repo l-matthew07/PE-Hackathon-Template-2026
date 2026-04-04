@@ -2,6 +2,8 @@ from datetime import datetime
 
 from flask import request
 
+from app.config import get_settings
+
 
 def format_datetime(value: object) -> str | None:
     if value is None:
@@ -12,12 +14,14 @@ def format_datetime(value: object) -> str | None:
 
 
 def parse_pagination(default_per_page: int = 100) -> tuple[int, int]:
+    settings = get_settings()
+    configured_default = default_per_page or settings.default_per_page
     page = max(1, request.args.get("page", default=1, type=int) or 1)
-    per_page = max(
-        1,
-        request.args.get("per_page", default=default_per_page, type=int)
-        or default_per_page,
+    requested_per_page = (
+        request.args.get("per_page", default=configured_default, type=int)
+        or configured_default
     )
+    per_page = min(settings.max_per_page, max(1, requested_per_page))
     return page, per_page
 
 

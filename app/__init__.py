@@ -1,12 +1,16 @@
 from dotenv import load_dotenv
 from flask import Flask, jsonify
+from werkzeug.exceptions import HTTPException
 
+from app.config import get_settings
 from app.database import db, init_db
+from app.lib.api import error_response
 from app.routes import register_routes
 
 
 def create_app():
     load_dotenv()
+    get_settings()
 
     app = Flask(__name__)
 
@@ -26,6 +30,15 @@ def create_app():
             db.close()
 
     register_routes(app)
+
+    @app.errorhandler(HTTPException)
+    def handle_http_error(exc: HTTPException):
+        return error_response(exc.description, "HTTP_ERROR", exc.code or 500)
+
+    @app.errorhandler(Exception)
+    def handle_unexpected_error(exc: Exception):
+        app.logger.exception("Unhandled application error", exc_info=exc)
+        return error_response("Internal server error", "INTERNAL_ERROR", 500)
 
     @app.route("/health")
     def health():

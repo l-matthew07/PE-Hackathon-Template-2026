@@ -1,13 +1,15 @@
 import json
-from datetime import datetime
 
 from flask import Blueprint, jsonify, request
-from peewee import IntegrityError
 
+from app.lib.api import error_response, list_response
 from app.lib.utils import format_datetime, parse_pagination
 from app.models.event import Event
+from app.services.errors import ServiceError
+from app.services.events_service import EventsService
 
 events_bp = Blueprint("events", __name__, url_prefix="/events")
+events_service = EventsService()
 
 def _serialize_details(value: object):
     if value is None or value == "":
@@ -51,43 +53,16 @@ def list_events():
         query = query.where(Event.event_type == event_type)
 
     events = query.order_by(Event.id).limit(per_page).offset(offset)
-    return jsonify([_serialize_event(event) for event in events]), 200
+    return list_response([_serialize_event(event) for event in events], page, per_page)
 
 
 @events_bp.post("")
 def create_event():
     payload = request.get_json(silent=True) or {}
 
-    url_id = payload.get("url_id")
-    user_id = payload.get("user_id")
-    event_type = (payload.get("event_type") or "").strip()
-    details = payload.get("details")
-    timestamp = payload.get("timestamp")
-
-    if not url_id or not user_id or not event_type:
-        return jsonify(error="url_id, user_id, and event_type are required"), 400
-
-    if timestamp:
-        try:
-            parsed_timestamp = datetime.fromisoformat(str(timestamp).replace("Z", "+00:00"))
-        except ValueError:
-            return jsonify(error="timestamp must be ISO-8601"), 400
-    else:
-        parsed_timestamp = datetime.utcnow()
-
-    serialized_details = details
-    if isinstance(details, (dict, list)):
-        serialized_details = json.dumps(details)
-
     try:
-        event = Event.create(
-            url_id=url_id,
-            user_id=user_id,
-            event_type=event_type,
-            timestamp=parsed_timestamp,
-            details=serialized_details,
-        )
-    except IntegrityError as exc:
-        return jsonify(error=str(exc)), 400
+        event = events_service.create_event(payload)
+    except ServiceError as exc:
+        return error_response(exc.message, exc.code, exc.status, details=exc.details)
 
     return jsonify(_serialize_event(event)), 201
