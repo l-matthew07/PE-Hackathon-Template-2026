@@ -2,12 +2,14 @@ import os
 import secrets
 import string
 from datetime import datetime
+import json
 from urllib.parse import urlparse
 
 from flask import Blueprint, jsonify, redirect, request
 from peewee import IntegrityError
 
 from app.cache import cache_get, cache_set
+from app.models.event import Event
 from app.models.url import Url
 
 shortener_bp = Blueprint("shortener", __name__)
@@ -73,6 +75,18 @@ def resolve_short_url(short_code: str):
     url = Url.get_or_none((Url.short_code == short_code) & (Url.is_active == True))
     if url is None:
         return jsonify(error="Short URL not found"), 404
+
+    if url.user_id is not None:
+        try:
+            Event.create(
+                url_id=url.id,
+                user_id=url.user_id,
+                event_type="click",
+                timestamp=datetime.utcnow(),
+                details=json.dumps({"short_code": short_code}),
+            )
+        except IntegrityError:
+            pass
 
     cache_set(cache_key, url.original_url, ttl_seconds=3600)
     return redirect(url.original_url, code=302)
