@@ -85,7 +85,7 @@ services:
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/provisioning/dashboards/flask_overview.json
-      GF_INSTALL_PLUGINS: "volkovlabs-echarts-panel,grafana-clock-panel,marcusolsson-dynamictext-panel"
+      GF_INSTALL_PLUGINS: "volkovlabs-echarts-panel,grafana-clock-panel,marcusolsson-dynamictext-panel,grafana-piechart-panel"
       GF_PANELS_DISABLE_SANITIZE_HTML: "true"
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
