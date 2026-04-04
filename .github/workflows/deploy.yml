@@ -20,11 +20,8 @@ jobs:
           script: |
             set -euo pipefail
 
-            ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} bash -s -- "${VM_APP_DIR}" << 'EOF'
-              set -euo pipefail
-              APP_DIR="$1"
+            APP_DIR="${{ vars.VM_APP_DIR }}"
 
-              cd "${APP_DIR}"
-              chmod +x scripts/deploy-vm.sh
-              ./scripts/deploy-vm.sh
-            EOF
+            cd "${APP_DIR}"
+            chmod +x scripts/deploy-vm.sh
+            ./scripts/deploy-vm.sh
