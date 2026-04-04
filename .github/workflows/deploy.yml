@@ -12,19 +12,19 @@ jobs:
       VM_APP_DIR: ${{ vars.VM_APP_DIR }}
 
     steps:
-      uses: appleboy/ssh-action@v1
-      with:
-        host: ${{ secrets.VM_HOST }}
-        username: ${{ secrets.VM_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        script: |
-          set -euo pipefail
-
-          ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} bash -s -- "${VM_APP_DIR}" << 'EOF'
+      - uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
             set -euo pipefail
-            APP_DIR="$1"
 
-            cd "${APP_DIR}"
-            chmod +x scripts/deploy-vm.sh
-            ./scripts/deploy-vm.sh
-          EOF
+            ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} bash -s -- "${VM_APP_DIR}" << 'EOF'
+              set -euo pipefail
+              APP_DIR="$1"
+
+              cd "${APP_DIR}"
+              chmod +x scripts/deploy-vm.sh
+              ./scripts/deploy-vm.sh
+            EOF
