@@ -40,30 +40,44 @@ def seed() -> None:
     users_file = data_dir / "users.csv"
     if users_file.exists():
         rows = _load_csv(str(users_file))
-        with db.atomic():
-            for batch in chunked(rows, 100):
-                User.insert_many(batch).execute()
-        print(f"Loaded {len(rows)} users")
+        loaded = 0
+        for row in rows:
+            try:
+                with db.atomic():
+                    User.insert(row).execute()
+                loaded += 1
+            except Exception:
+                pass
+        print(f"Loaded {loaded}/{len(rows)} users")
 
     # Load urls
     urls_file = data_dir / "urls.csv"
     if urls_file.exists():
         rows = _load_csv(str(urls_file))
+        loaded = 0
         for row in rows:
             row["is_active"] = row["is_active"] == "True"
-        with db.atomic():
-            for batch in chunked(rows, 100):
-                Url.insert_many(batch).execute()
-        print(f"Loaded {len(rows)} urls")
+            try:
+                with db.atomic():
+                    Url.insert(row).execute()
+                loaded += 1
+            except Exception:
+                pass
+        print(f"Loaded {loaded}/{len(rows)} urls")
 
     # Load events
     events_file = data_dir / "events.csv"
     if events_file.exists():
         rows = _load_csv(str(events_file))
-        with db.atomic():
-            for batch in chunked(rows, 100):
-                Event.insert_many(batch).execute()
-        print(f"Loaded {len(rows)} events")
+        loaded = 0
+        for row in rows:
+            try:
+                with db.atomic():
+                    Event.insert(row).execute()
+                loaded += 1
+            except Exception:
+                pass
+        print(f"Loaded {loaded}/{len(rows)} events")
 
 
 if __name__ == "__main__":
