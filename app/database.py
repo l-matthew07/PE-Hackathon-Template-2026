@@ -31,9 +31,14 @@ def init_db(app):
 
     logger.info("Database initialised: %s@%s:%s", settings.database_name, settings.database_host, settings.database_port)
 
+    from app.models.user import User
     from app.models.url import Url
+    from app.models.event import Event
     with database:
-        database.create_tables([Url], safe=True)
+        try:
+            database.create_tables([User, Url, Event], safe=True)
+        except Exception:
+            pass  # another worker already created the tables — safe to ignore
 
     @app.before_request
     def _db_connect():
