@@ -5,7 +5,7 @@
   "tags": ["flask", "incident-response"],
   "refresh": "10s",
   "schemaVersion": 38,
-  "version": 12,
+  "version": 14,
   "time": { "from": "now-1h", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
@@ -35,7 +35,7 @@
       "transparent": true,
       "title": "Service Health",
       "description": "Live now. Turns red the moment Prometheus can no longer scrape the Flask app.",
-      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
+      "gridPos": { "x": 0, "y": 0, "w": 5, "h": 2 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -80,7 +80,7 @@
       "transparent": true,
       "title": "Error Rate %",
       "description": "5xx error rate over last 5 min. Populates once Bronze wires http_requests_total.",
-      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
+      "gridPos": { "x": 5, "y": 0, "w": 5, "h": 2 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -119,7 +119,7 @@
       "transparent": true,
       "title": "p95 Latency",
       "description": "95th percentile request duration. Populates once Bronze wires http_request_duration_seconds.",
-      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
+      "gridPos": { "x": 10, "y": 0, "w": 5, "h": 2 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -158,7 +158,7 @@
       "transparent": true,
       "title": "CPU %",
       "description": "Host CPU utilisation from node_exporter. Live now.",
-      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
+      "gridPos": { "x": 15, "y": 0, "w": 4, "h": 2 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -196,7 +196,7 @@
       "transparent": true,
       "title": "DB Connections",
       "description": "Live Postgres connections from postgres_exporter. Red at 20 = pool exhaustion.",
-      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 4 },
+      "gridPos": { "x": 19, "y": 0, "w": 5, "h": 2 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -294,7 +294,7 @@
       "transparent": true,
       "title": "Latency — Distribution Heatmap",
       "description": "Latency bucket distribution over time. Brighter = more requests in that duration band. Shows distribution shifts instantly during incidents. Populates once Bronze wires http_request_duration_seconds.",
-      "gridPos": { "x": 0, "y": 4, "w": 14, "h": 8 },
+      "gridPos": { "x": 0, "y": 2, "w": 14, "h": 5 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -340,7 +340,7 @@
       "transparent": true,
       "title": "Traffic — Requests per Second",
       "description": "Incoming request rate by endpoint. Use the Endpoint dropdown to filter to a single route.",
-      "gridPos": { "x": 14, "y": 4, "w": 10, "h": 8 },
+      "gridPos": { "x": 14, "y": 2, "w": 10, "h": 5 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -365,7 +365,7 @@
       "transparent": true,
       "title": "Errors — 5xx Rate",
       "description": "Fraction of requests returning 5xx. Background turns red at 5%. Populates once Bronze wires http_requests_total.",
-      "gridPos": { "x": 0, "y": 12, "w": 10, "h": 8 },
+      "gridPos": { "x": 0, "y": 7, "w": 10, "h": 5 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -403,7 +403,7 @@
       "transparent": true,
       "title": "Saturation — Active In-Flight Requests",
       "description": "Current number of requests being processed simultaneously. Populates once Bronze wires active_requests.",
-      "gridPos": { "x": 10, "y": 12, "w": 7, "h": 8 },
+      "gridPos": { "x": 10, "y": 7, "w": 7, "h": 5 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -438,7 +438,7 @@
       "transparent": true,
       "title": "URL Shortener — Redirect Hit Rate",
       "description": "Fraction of redirects that resolve vs 404. Populates once Bronze wires url_shortener_redirects_total.",
-      "gridPos": { "x": 17, "y": 12, "w": 7, "h": 8 },
+      "gridPos": { "x": 17, "y": 7, "w": 7, "h": 5 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -469,7 +469,7 @@
       "transparent": true,
       "title": "Saturation — DB Pool Connections",
       "description": "Active Postgres connections via app pool. Populates once Bronze wires db_pool_connections_active.",
-      "gridPos": { "x": 0, "y": 20, "w": 8, "h": 8 },
+      "gridPos": { "x": 0, "y": 12, "w": 8, "h": 5 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -502,7 +502,7 @@
       "transparent": true,
       "title": "Traffic — Request Rate by Status Code",
       "description": "2xx vs 4xx vs 5xx breakdown over time. Populates once Bronze wires http_requests_total.",
-      "gridPos": { "x": 8, "y": 20, "w": 16, "h": 8 },
+      "gridPos": { "x": 8, "y": 12, "w": 16, "h": 5 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -525,7 +525,7 @@
       "id": 8,
       "type": "row",
       "title": "Infrastructure — Host Metrics",
-      "gridPos": { "x": 0, "y": 28, "w": 24, "h": 1 },
+      "gridPos": { "x": 0, "y": 17, "w": 24, "h": 1 },
       "collapsed": true,
       "panels": [
         {
@@ -662,7 +662,7 @@
       "id": 13,
       "type": "row",
       "title": "PostgreSQL",
-      "gridPos": { "x": 0, "y": 29, "w": 24, "h": 1 },
+      "gridPos": { "x": 0, "y": 18, "w": 24, "h": 1 },
       "collapsed": true,
       "panels": [
         {
@@ -764,7 +764,7 @@
       "id": 17,
       "type": "row",
       "title": "SLO / Error Budget",
-      "gridPos": { "x": 0, "y": 30, "w": 24, "h": 1 },
+      "gridPos": { "x": 0, "y": 19, "w": 24, "h": 1 },
       "collapsed": true,
       "panels": [
         {
@@ -839,7 +839,7 @@
       "id": 50,
       "type": "row",
       "title": "Command Center",
-      "gridPos": { "x": 0, "y": 33, "w": 24, "h": 1 },
+      "gridPos": { "x": 0, "y": 22, "w": 24, "h": 1 },
       "collapsed": false,
       "panels": []
     },
@@ -849,7 +849,7 @@
       "transparent": true,
       "title": "App Uptime",
       "description": "How long the Flask app has been continuously up.",
-      "gridPos": { "x": 0, "y": 34, "w": 3, "h": 8 },
+      "gridPos": { "x": 0, "y": 23, "w": 3, "h": 5 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -880,7 +880,7 @@
       "transparent": true,
       "title": "Total Requests",
       "description": "All-time request count processed by the app.",
-      "gridPos": { "x": 3, "y": 34, "w": 3, "h": 8 },
+      "gridPos": { "x": 3, "y": 23, "w": 3, "h": 5 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -911,7 +911,7 @@
       "transparent": true,
       "title": "Latency — P50 / P95 / P99",
       "description": "All three percentile lines on one graph. P99 spiking while P50 is flat = tail latency issue.",
-      "gridPos": { "x": 6, "y": 34, "w": 18, "h": 8 },
+      "gridPos": { "x": 6, "y": 23, "w": 18, "h": 5 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -952,7 +952,7 @@
       "transparent": true,
       "title": "Traffic by Endpoint",
       "description": "Share of total requests per endpoint.",
-      "gridPos": { "x": 0, "y": 42, "w": 8, "h": 8 },
+      "gridPos": { "x": 0, "y": 28, "w": 8, "h": 5 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -978,7 +978,7 @@
       "transparent": true,
       "title": "Endpoint Activity Timeline",
       "description": "Green = active traffic, red = silent. Shows which endpoints went quiet during incidents.",
-      "gridPos": { "x": 8, "y": 42, "w": 8, "h": 8 },
+      "gridPos": { "x": 8, "y": 28, "w": 8, "h": 5 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -1003,7 +1003,7 @@
       "transparent": true,
       "title": "Top Endpoints",
       "description": "Req/s and p95 latency per endpoint.",
-      "gridPos": { "x": 16, "y": 42, "w": 8, "h": 8 },
+      "gridPos": { "x": 16, "y": 28, "w": 8, "h": 5 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -1042,7 +1042,7 @@
       "type": "text",
       "title": "",
       "transparent": true,
-      "gridPos": { "x": 0, "y": 31, "w": 24, "h": 2 },
+      "gridPos": { "x": 0, "y": 20, "w": 24, "h": 2 },
       "options": {
         "mode": "html",
         "content": "<style>\n@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&family=Share+Tech+Mono&display=swap');\n\n/* Rounded panels with cyan border glow */\n.react-grid-item > div:first-child,\n[class*='panel-container'],\n.panel-container {\n  border-radius: 14px !important;\n  overflow: hidden !important;\n  border: 1px solid rgba(0, 188, 212, 0.45) !important;\n  box-shadow: 0 0 28px rgba(0, 188, 212, 0.25), 0 0 8px rgba(0, 188, 212, 0.2), inset 0 1px 0 rgba(0, 188, 212, 0.12) !important;\n}\n\n/* Orbitron for panel titles */\n[class*='panel-title'] h6,\n[class*='panel-title'] span,\n[class*='title-text'] {\n  font-family: 'Orbitron', sans-serif !important;\n  font-size: 10px !important;\n  font-weight: 600 !important;\n  letter-spacing: 0.1em !important;\n  text-transform: uppercase !important;\n  color: rgba(0, 229, 255, 0.85) !important;\n}\n\n/* Share Tech Mono for all values and body text */\nbody,\n[class*='stat-text'],\n[class*='stat-value'],\n[class*='graph-legend'],\n[class*='gauge'],\nsvg text,\n.grafana-app {\n  font-family: 'Share Tech Mono', monospace !important;\n}\n</style>"
