@@ -1,6 +1,8 @@
 from flask_openapi3.blueprint import APIBlueprint
 from flask_openapi3.models.tag import Tag
 
+from app.cache import cache_delete, cache_get_json, cache_set_json
+from app.config import get_settings
 from app.lib.api import error_response, list_response
 from app.lib.utils import (
     format_datetime,
@@ -23,6 +25,10 @@ urls_tag = Tag(name="urls")
 urls_bp = APIBlueprint("urls", __name__, url_prefix="/urls", abp_tags=[urls_tag])
 
 urls_service = UrlsService()
+
+
+def _url_cache_key(url_id: int) -> str:
+    return f"url:{url_id}"
 
 
 def _extract_user_id(url: Url) -> int | None:
@@ -71,10 +77,18 @@ def list_urls(query: UrlListQuery):
 
 @urls_bp.get("/<int:url_id>", responses={200: UrlResponse, 404: ErrorEnvelope})
 def get_url(path: UrlIdPath):
+    cache_key = _url_cache_key(path.url_id)
+    cached_payload = cache_get_json(cache_key)
+    if isinstance(cached_payload, dict):
+        return cached_payload, 200
+
     url = Url.get_or_none(Url.id == path.url_id)
     if url is None:
         return error_response("URL not found", "NOT_FOUND", 404)
-    return _serialize_url(url), 200
+
+    payload = _serialize_url(url)
+    cache_set_json(cache_key, payload, ttl_seconds=get_settings().cache_ttl_seconds)
+    return payload, 200
 
 
 @urls_bp.post("", responses={201: UrlResponse, 400: ErrorEnvelope, 409: ErrorEnvelope})
@@ -94,10 +108,13 @@ def update_url(path: UrlIdPath, body: UrlUpdatePayload):
     except ServiceError as exc:
         return error_response(exc.message, exc.code, exc.status, details=exc.details)
 
-    return _serialize_url(url), 200
+    payload = _serialize_url(url)
+    cache_delete(_url_cache_key(path.url_id))
+    return payload, 200
 
 
 @urls_bp.delete("/<int:url_id>")
 def delete_url(path: UrlIdPath):
     Url.delete().where(Url.id == path.url_id).execute()
+    cache_delete(_url_cache_key(path.url_id))
     return "", 204

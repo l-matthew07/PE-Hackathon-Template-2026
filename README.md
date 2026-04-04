@@ -96,7 +96,7 @@ chmod +x scripts/deploy-vm.sh
 ### Bronze (50 concurrent users)
 
 ```bash
-k6 run load-tests/k6-quest.js \
+k6 run scripts/k6-test.js \
     -e BASE_URL=http://<your-do-ip> \
     -e VUS=50 \
     -e DURATION=2m \
@@ -117,7 +117,7 @@ docker compose up -d --scale web=4 web nginx
 docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E "web|nginx"
 
 # Load test
-k6 run load-tests/k6-quest.js \
+k6 run scripts/k6-test.js \
     -e BASE_URL=http://<your-do-ip> \
     -e VUS=200 \
     -e DURATION=3m \
@@ -133,7 +133,7 @@ Target:
 # Scale app fleet higher for tsunami test
 docker compose up -d --scale web=8 web nginx
 
-k6 run load-tests/k6-quest.js \
+k6 run scripts/k6-test.js \
     -e BASE_URL=http://<your-do-ip> \
     -e VUS=500 \
     -e DURATION=4m \
@@ -150,7 +150,7 @@ Target:
 - Redirect lookups are cached in Redis to cut repeated database reads.
 - Keep FLASK_DEBUG disabled for load testing and production-like runs.
 - Containers serve with Gunicorn (`wsgi:app`) for concurrent-load stability.
-- Optional quest controls: `TIER=bronze|silver|gold`, `RESOLVE_RATIO=0.65` for redirect-heavy traffic, and `STAGES="30s:50,1m:200,2m:500"` for ramp testing.
+- Optional quest controls: `TIER=bronze|silver|gold`, `LIST_RATIO=0.25` for list-read traffic share, and `STAGES="30s:50,1m:200,2m:500"` for ramp testing.
 
 ## Migrations (peewee-migrate)
 

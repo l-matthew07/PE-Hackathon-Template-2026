@@ -24,6 +24,7 @@ class Settings:
     app_base_url: str | None
     default_per_page: int
     max_per_page: int
+    cache_ttl_seconds: int
 
 
 _cached_settings: Settings | None = None
@@ -47,5 +48,6 @@ def get_settings() -> Settings:
         app_base_url=os.environ.get("APP_BASE_URL"),
         default_per_page=default_per_page,
         max_per_page=max_per_page,
+        cache_ttl_seconds=max(1, _env_int("CACHE_TTL_SECONDS", 300)),
     )
     return _cached_settings

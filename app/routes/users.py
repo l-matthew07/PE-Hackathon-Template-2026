@@ -2,6 +2,8 @@ from flask import request
 from flask_openapi3.blueprint import APIBlueprint
 from flask_openapi3.models.tag import Tag
 
+from app.cache import cache_delete, cache_get_json, cache_set_json
+from app.config import get_settings
 from app.lib.api import error_response, list_response
 from app.lib.utils import format_datetime, normalize_pagination
 from app.models.user import User
@@ -23,6 +25,10 @@ users_bp = APIBlueprint("users", __name__, url_prefix="/users", abp_tags=[users_
 
 users_service = UsersService()
 
+
+def _user_cache_key(user_id: int) -> str:
+    return f"user:{user_id}"
+
 def _serialize_user(user: User) -> dict:
     return {
         "id": user.id,
@@ -42,10 +48,18 @@ def list_users(query: PaginationQuery):
 
 @users_bp.get("/<int:user_id>", responses={200: UserResponse, 404: ErrorEnvelope})
 def get_user(path: UserIdPath):
+    cache_key = _user_cache_key(path.user_id)
+    cached_payload = cache_get_json(cache_key)
+    if isinstance(cached_payload, dict):
+        return cached_payload, 200
+
     user = User.get_or_none(User.id == path.user_id)
     if user is None:
         return error_response("User not found", "NOT_FOUND", 404)
-    return _serialize_user(user), 200
+
+    payload = _serialize_user(user)
+    cache_set_json(cache_key, payload, ttl_seconds=get_settings().cache_ttl_seconds)
+    return payload, 200
 
 
 @users_bp.post("", responses={201: UserResponse, 400: ErrorEnvelope, 409: ErrorEnvelope})
@@ -65,12 +79,15 @@ def update_user(path: UserIdPath, body: UserUpdatePayload):
     except ServiceError as exc:
         return error_response(exc.message, exc.code, exc.status, details=exc.details)
 
-    return _serialize_user(user), 200
+    payload = _serialize_user(user)
+    cache_delete(_user_cache_key(path.user_id))
+    return payload, 200
 
 
 @users_bp.delete("/<int:user_id>")
 def delete_user(path: UserIdPath):
     deleted = User.delete().where(User.id == path.user_id).execute()
+    cache_delete(_user_cache_key(path.user_id))
     if deleted == 0:
         return "", 204
     return "", 204

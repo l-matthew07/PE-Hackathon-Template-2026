@@ -45,6 +45,50 @@ class TestGetUser:
         resp = client.get("/users/99999")
         assert resp.status_code == 404
 
+    def test_get_uses_cache_hit_without_db_lookup(self, client, monkeypatch):
+        created = client.post("/users", json={"username": "cache-user", "email": "cache-user@example.com"})
+        user_id = created.get_json()["id"]
+
+        monkeypatch.setattr(
+            "app.routes.users.cache_get_json",
+            lambda key: {
+                "id": user_id,
+                "username": "cache-user",
+                "email": "cache-user@example.com",
+                "created_at": None,
+            },
+        )
+
+        def _fail_db_lookup(*_args, **_kwargs):
+            raise AssertionError("DB lookup should not run on cache hit")
+
+        monkeypatch.setattr("app.routes.users.User.get_or_none", _fail_db_lookup)
+
+        resp = client.get(f"/users/{user_id}")
+        assert resp.status_code == 200
+        assert resp.get_json()["username"] == "cache-user"
+
+    def test_get_caches_db_result_on_miss(self, client, monkeypatch):
+        created = client.post("/users", json={"username": "cache-miss-user", "email": "cache-miss@example.com"})
+        user_id = created.get_json()["id"]
+
+        recorded = {}
+
+        monkeypatch.setattr("app.routes.users.cache_get_json", lambda key: None)
+
+        def _record_set(key, value, ttl_seconds):
+            recorded["key"] = key
+            recorded["value"] = value
+            recorded["ttl_seconds"] = ttl_seconds
+
+        monkeypatch.setattr("app.routes.users.cache_set_json", _record_set)
+
+        resp = client.get(f"/users/{user_id}")
+        assert resp.status_code == 200
+        assert recorded["key"] == f"user:{user_id}"
+        assert recorded["value"]["id"] == user_id
+        assert recorded["ttl_seconds"] > 0
+
 
 class TestListUsers:
     def test_list_empty(self, client):
@@ -72,6 +116,17 @@ class TestUpdateUser:
         resp = client.put("/users/99999", json={"username": "x"})
         assert resp.status_code == 404
 
+    def test_update_invalidates_user_cache_key(self, client, monkeypatch):
+        created = client.post("/users", json={"username": "invalidate-put", "email": "inv-put@example.com"})
+        user_id = created.get_json()["id"]
+
+        deleted_keys = []
+        monkeypatch.setattr("app.routes.users.cache_delete", lambda key: deleted_keys.append(key))
+
+        resp = client.put(f"/users/{user_id}", json={"username": "updated-name"})
+        assert resp.status_code == 200
+        assert deleted_keys == [f"user:{user_id}"]
+
 
 class TestDeleteUser:
     def test_delete_existing(self, client):
@@ -83,3 +138,14 @@ class TestDeleteUser:
     def test_delete_nonexistent(self, client):
         resp = client.delete("/users/99999")
         assert resp.status_code == 204
+
+    def test_delete_invalidates_user_cache_key(self, client, monkeypatch):
+        created = client.post("/users", json={"username": "invalidate-del", "email": "inv-del@example.com"})
+        user_id = created.get_json()["id"]
+
+        deleted_keys = []
+        monkeypatch.setattr("app.routes.users.cache_delete", lambda key: deleted_keys.append(key))
+
+        resp = client.delete(f"/users/{user_id}")
+        assert resp.status_code == 204
+        assert deleted_keys == [f"user:{user_id}"]
