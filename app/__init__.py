@@ -31,6 +31,12 @@ def create_app():
         default_labels={"instance": os.environ.get("HOSTNAME", "unknown")},
     )
 
+    PrometheusMetrics(
+        app,
+        group_by="url_rule",
+        default_labels={"instance": os.environ.get("HOSTNAME", "unknown")},
+    )
+
     init_db(app)
 
     from app import models  # noqa: F401 - registers models with Peewee
