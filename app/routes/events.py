@@ -1,5 +1,6 @@
 import json
 
+from flask import request
 from flask_openapi3.blueprint import APIBlueprint
 from flask_openapi3.models.tag import Tag
 
@@ -8,7 +9,6 @@ from app.lib.utils import format_datetime, normalize_pagination
 from app.models.event import Event
 from app.services.errors import ServiceError
 from app.services.schemas import (
-    BulkLoadBody,
     BulkLoadResponse,
     ErrorEnvelope,
     EventCreatePayload,
@@ -80,10 +80,12 @@ def create_event(body: EventCreatePayload):
 
 
 @events_bp.post("/bulk", responses={200: BulkLoadResponse, 400: ErrorEnvelope})
-def bulk_load_events(body: BulkLoadBody):
-    filename = (body.file or "events.csv").strip() or "events.csv"
+def bulk_load_events():
+    payload = request.get_json(silent=True) or {}
+    filename = str(payload.get("file") or "events.csv").strip() or "events.csv"
+    requested_count = payload.get("row_count")
     try:
         loaded_count = events_service.bulk_load_events(filename)
     except ServiceError as exc:
         return error_response(exc.message, exc.code, exc.status, details=exc.details)
-    return {"file": filename, "row_count": body.row_count, "loaded": loaded_count}, 200
+    return {"file": filename, "row_count": requested_count, "loaded": loaded_count}, 200

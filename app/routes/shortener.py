@@ -8,7 +8,6 @@ from app.lib.api import error_response
 from app.models.url import Url
 from app.services.errors import ServiceError
 from app.services.schemas import (
-    BulkLoadBody,
     BulkLoadResponse,
     ErrorEnvelope,
     ShortCodePath,
@@ -64,10 +63,12 @@ def resolve_short_url(path: ShortCodePath):
 
 
 @shortener_bp.post("/shorten/bulk", responses={200: BulkLoadResponse, 400: ErrorEnvelope})
-def bulk_load_urls(body: BulkLoadBody):
-    filename = (body.file or "urls.csv").strip() or "urls.csv"
+def bulk_load_urls():
+    payload = request.get_json(silent=True) or {}
+    filename = str(payload.get("file") or "urls.csv").strip() or "urls.csv"
+    requested_count = payload.get("row_count")
     try:
         loaded_count = shortener_service.bulk_load_urls(filename)
     except ServiceError as exc:
         return error_response(exc.message, exc.code, exc.status, details=exc.details)
-    return {"file": filename, "row_count": body.row_count, "loaded": loaded_count}, 200
+    return {"file": filename, "row_count": requested_count, "loaded": loaded_count}, 200
