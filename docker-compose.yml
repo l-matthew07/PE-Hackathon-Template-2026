@@ -43,7 +43,7 @@ services:
     profiles:
       - setup
 
-  web1:
+  web:
     build: .
     command: uv run gunicorn --bind 0.0.0.0:5000 --workers 4 --worker-class gthread --threads 4 --timeout 30 wsgi:app
     depends_on:
@@ -60,33 +60,10 @@ services:
       DATABASE_PASSWORD: ${DATABASE_PASSWORD:-postgres}
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost}
       REDIS_URL: redis://redis:6379/0
-    ports:
-      - "5001:5000"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  web2:
-    build: .
-    command: uv run gunicorn --bind 0.0.0.0:5000 --workers 4 --worker-class gthread --threads 4 --timeout 30 wsgi:app
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    environment:
-      FLASK_DEBUG: "false"
-      DATABASE_NAME: ${DATABASE_NAME:-hackathon_db}
-      DATABASE_HOST: db
-      DATABASE_PORT: 5432
-      DATABASE_USER: ${DATABASE_USER:-postgres}
-      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-postgres}
-      APP_BASE_URL: ${APP_BASE_URL:-http://localhost}
-      REDIS_URL: redis://redis:6379/0
-    ports:
-      - "5002:5000"
+    expose:
+      - "5000"
+    deploy:
+      replicas: 2
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 10s
@@ -96,9 +73,7 @@ services:
   nginx:
     image: nginx:1.27-alpine
     depends_on:
-      web1:
-        condition: service_healthy
-      web2:
+      web:
         condition: service_healthy
     ports:
       - "80:80"

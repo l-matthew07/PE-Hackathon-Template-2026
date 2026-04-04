@@ -69,7 +69,7 @@ docker compose up -d db redis
 docker compose --profile setup run --rm migrate
 
 # 4. Start scaled app fleet + load balancer
-docker compose up -d web1 web2 nginx
+docker compose up -d web nginx
 
 # 5. Verify
 curl http://localhost/health
@@ -135,7 +135,7 @@ Target:
 
 ### Notes
 
-- Traffic goes through Nginx at port 80 and is distributed across web1 and web2.
+- Traffic goes through Nginx at port 80 and is distributed across two `web` replicas.
 - Redirect lookups are cached in Redis to cut repeated database reads.
 - Keep FLASK_DEBUG disabled for load testing and production-like runs.
 
