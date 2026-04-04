@@ -16,6 +16,8 @@ services:
       retries: 10
     networks:
       - monitoring
+    label:
+      autoheal-app: true
 
   redis:
     image: redis:7-alpine
@@ -31,6 +33,8 @@ services:
       retries: 10
     networks:
       - monitoring
+    label:
+      autoheal-app: true
 
   migrate:
     build: .
@@ -80,6 +84,8 @@ services:
       retries: 5
     networks:
       - monitoring
+    label:
+      autoheal-app: true
 
   nginx:
     image: nginx:1.27-alpine
@@ -97,6 +103,8 @@ services:
       retries: 5
     networks:
       - monitoring
+    label:
+      autoheal-app: true
 
   node_exporter:
     image: prom/node-exporter:v1.8.0
@@ -162,6 +170,17 @@ services:
       retries: 10
     networks:
       - monitoring
+  autoheal:
+    deploy:
+      replicas: 1
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: autoheal-app
+    image: willfarrell/autoheal:latest
+    network_mode: none
+    restart: always
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock
 
   promtail:
     image: grafana/promtail:2.9.6

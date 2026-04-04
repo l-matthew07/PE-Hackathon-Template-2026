@@ -1,82 +1,16 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 
-function parseIntEnv(name, fallback) {
-  const raw = __ENV[name];
-  if (!raw) {
-    return fallback;
-  }
-  const parsed = parseInt(raw, 10);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
+const BASE_URL = (__ENV.BASE_URL || 'http://localhost').replace(/\/+$/, '');
+const THINK_TIME_SECONDS = 0.05;
+const CREATE_RATIO = 0.2;
+const LIST_RATIO = 0.25;
+const ID_WINDOW_SIZE = 200;
+const HEALTHCHECK_EVERY = 25;
 
-function parseFloatEnv(name, fallback) {
-  const raw = __ENV[name];
-  if (!raw) {
-    return fallback;
-  }
-  const parsed = parseFloat(raw);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-function normalizeBaseUrl(url) {
-  return (url || 'http://localhost').replace(/\/+$/, '');
-}
-
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
-}
-
-function parseStages(rawStages) {
-  if (!rawStages) {
-    return null;
-  }
-
-  const stages = rawStages
-    .split(',')
-    .map((entry) => entry.trim())
-    .filter(Boolean)
-    .map((entry) => {
-      const parts = entry.split(':').map((part) => part.trim());
-      if (parts.length !== 2) {
-        return null;
-      }
-      const target = parseInt(parts[1], 10);
-      if (!Number.isFinite(target)) {
-        return null;
-      }
-      return { duration: parts[0], target };
-    })
-    .filter(Boolean);
-
-  return stages.length > 0 ? stages : null;
-}
-
-const tierDefaults = {
-  bronze: { vus: 50, duration: '2m', shortenRatio: 0.2 },
-  silver: { vus: 200, duration: '3m', shortenRatio: 0.2 },
-  gold: { vus: 500, duration: '4m', shortenRatio: 0.15 },
-};
-
-const tierName = (__ENV.TIER || 'bronze').toLowerCase();
-const selectedTier = tierDefaults[tierName] || tierDefaults.bronze;
-
-const baseUrl = normalizeBaseUrl(__ENV.BASE_URL || 'http://localhost');
-const vus = parseIntEnv('VUS', selectedTier.vus);
-const duration = __ENV.DURATION || selectedTier.duration;
-const shortenRatio = clamp(
-  parseFloatEnv('SHORTEN_RATIO', selectedTier.shortenRatio),
-  0,
-  1,
-);
-const listRatio = clamp(parseFloatEnv('LIST_RATIO', 0.25), 0, 1);
-const healthcheckEvery = Math.max(parseIntEnv('HEALTHCHECK_EVERY', 25), 0);
-const thinkTime = Math.max(parseFloatEnv('THINK_TIME_SECONDS', 0.05), 0);
-const stages = parseStages(__ENV.STAGES);
-
-const idWindowSize = Math.max(parseIntEnv('ID_WINDOW_SIZE', 200), 1);
-
-const optionsBase = {
+export const options = {
+  vus: 50,
+  duration: '2m',
   thresholds: {
     http_req_failed: ['rate<0.05'],
     http_req_duration: ['p(95)<3000'],
@@ -84,24 +18,13 @@ const optionsBase = {
   },
 };
 
-export const options = stages
-  ? {
-      ...optionsBase,
-      stages,
-    }
-  : {
-      ...optionsBase,
-      vus,
-      duration,
-    };
-
 const vuState = {
   createdIds: [],
 };
 
 function rememberUrlId(id) {
   vuState.createdIds.push(id);
-  if (vuState.createdIds.length > idWindowSize) {
+  if (vuState.createdIds.length > ID_WINDOW_SIZE) {
     vuState.createdIds.shift();
   }
 }
@@ -123,7 +46,7 @@ function makeCreatePayload() {
 }
 
 function healthCheck() {
-  const response = http.get(`${baseUrl}/health`, {
+  const response = http.get(`${BASE_URL}/health`, {
     tags: { endpoint: '/health', operation: 'health' },
   });
 
@@ -141,7 +64,7 @@ function healthCheck() {
 
 function createUrl() {
   const payload = makeCreatePayload();
-  const response = http.post(`${baseUrl}/urls`, JSON.stringify(payload), {
+  const response = http.post(`${BASE_URL}/urls`, JSON.stringify(payload), {
     headers: { 'Content-Type': 'application/json' },
     tags: { endpoint: '/urls', operation: 'create' },
   });
@@ -165,7 +88,7 @@ function createUrl() {
 }
 
 function listUrls() {
-  const response = http.get(`${baseUrl}/urls?page=1&per_page=20`, {
+  const response = http.get(`${BASE_URL}/urls?page=1&per_page=20`, {
     tags: { endpoint: '/urls', operation: 'list' },
   });
 
@@ -191,7 +114,7 @@ function listUrls() {
 }
 
 function getUrlById(urlId) {
-  const response = http.get(`${baseUrl}/urls/${urlId}`, {
+  const response = http.get(`${BASE_URL}/urls/${urlId}`, {
     tags: { endpoint: '/urls/:id', operation: 'get' },
   });
 
@@ -210,7 +133,7 @@ function getUrlById(urlId) {
 }
 
 export function setup() {
-  const response = http.get(`${baseUrl}/health`, {
+  const response = http.get(`${BASE_URL}/health`, {
     tags: { endpoint: '/health', operation: 'setup' },
   });
 
@@ -219,28 +142,26 @@ export function setup() {
   });
 
   if (!healthy) {
-    throw new Error(`Target is not healthy at ${baseUrl}/health`);
+    throw new Error(`Target is not healthy at ${BASE_URL}/health`);
   }
-
-  return { baseUrl };
 }
 
 export default function () {
-  if (healthcheckEvery > 0 && __ITER % healthcheckEvery === 0) {
+  if (__ITER % HEALTHCHECK_EVERY === 0) {
     healthCheck();
   }
 
   const draw = Math.random();
 
-  if (draw < shortenRatio) {
+  if (draw < CREATE_RATIO) {
     createUrl();
-    sleep(thinkTime);
+    sleep(THINK_TIME_SECONDS);
     return;
   }
 
-  if (draw < shortenRatio + listRatio) {
+  if (draw < CREATE_RATIO + LIST_RATIO) {
     listUrls();
-    sleep(thinkTime);
+    sleep(THINK_TIME_SECONDS);
     return;
   }
 
@@ -251,5 +172,5 @@ export default function () {
     getUrlById(existingId);
   }
 
-  sleep(thinkTime);
+  sleep(THINK_TIME_SECONDS);
 }
