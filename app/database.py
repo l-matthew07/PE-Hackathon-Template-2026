@@ -20,6 +20,10 @@ def init_db(app):
     )
     db.initialize(database)
 
+    from app.models.url import Url
+    with database:
+        database.create_tables([Url], safe=True)
+
     @app.before_request
     def _db_connect():
         db.connect(reuse_if_open=True)
