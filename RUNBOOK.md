@@ -2,15 +2,31 @@
 
 > At 3 AM you are not functional. This document is. Follow the steps exactly.
 
+---
+
+## Severity Classification
+
+| Level | Condition | Response Time |
+|---|---|---|
+| P1 | Service completely down / error rate > 50% | Immediate — wake someone up |
+| P2 | Error rate > 5% **or** p95 latency > 1s for more than 5 minutes | < 15 minutes |
+| P3 | Anomalous metric trend, no confirmed user impact | Next working hour |
+
+---
+
 ## Service Map
 
 ```
 Browser → Flask (web:5000) → PostgreSQL (db:5432)
                 ↓
          Prometheus (prometheus:9090) scrapes /metrics every 15s
+         Node Exporter (node_exporter:9100) reports host CPU/RAM/disk
+         Postgres Exporter (postgres_exporter:9187) reports DB internals
                 ↓
          Grafana (grafana:3000) visualizes everything
 ```
+
+---
 
 ## Dashboard Access
 
@@ -18,105 +34,243 @@ Open **http://localhost:3000** — no login required (anonymous viewer enabled).
 
 Default home: **Flask App — Incident Response Overview**
 
-| Panel | Signal | What it tells you |
-|---|---|---|
-| Latency P50/P95/P99 | Latency | Is the app slow? Which percentile is spiking? |
-| Requests per Second | Traffic | How much load is there? Which endpoint? |
-| 5xx Error Rate | Errors | What fraction of requests are failing? |
-| Active In-Flight Requests | Saturation | Is the app overloaded right now? |
-| Redirect Hit Rate | App-specific | Are short codes resolving or returning 404? |
-| DB Pool Connections | Saturation | Is the database connection pool exhausted? |
-| Request Rate by Status | Traffic+Errors | Breakdown of 2xx vs 4xx vs 5xx over time |
+### Panel Reference
 
-## Alert Thresholds (Manual — Pre-Silver)
+| Row | Panel | Signal | What it tells you |
+|---|---|---|---|
+| Golden Signals | Latency P50/P95/P99 | Latency | Is the app slow? Which percentile is spiking? |
+| Golden Signals | Traffic — RPS | Traffic | How much load? Which endpoint? Use the Endpoint dropdown to filter. |
+| Golden Signals | Errors — 5xx Rate | Errors | What fraction of requests are failing? |
+| Golden Signals | Active In-Flight Requests | Saturation | Is the app currently overloaded? |
+| Golden Signals | Redirect Hit Rate | App-specific | Are short codes resolving or returning 404? |
+| Golden Signals | DB Pool Connections | Saturation | Is the app-level connection pool exhausted? |
+| Golden Signals | Request Rate by Status | Traffic + Errors | 2xx vs 4xx vs 5xx breakdown over time |
+| Infrastructure | CPU Usage % | Saturation | Is the host overloaded at OS level? |
+| Infrastructure | Memory Usage % | Saturation | Is the host running low on RAM? |
+| Infrastructure | Disk I/O | Saturation | Is storage a bottleneck? (watch during slow DB) |
+| Infrastructure | Network I/O | Traffic | Useful to distinguish CPU-bound vs network-bound slowness |
+| PostgreSQL | DB Active Connections | Saturation | Live connections direct from Postgres — more reliable than app metric |
+| PostgreSQL | DB Transaction Rate | Traffic | Commits/rollbacks per second — drop = DB bottleneck |
+| PostgreSQL | DB Deadlocks/min | Errors | Always a bug — any non-zero value needs investigation |
+| SLO | Error Budget Remaining | Errors | How much of the 99.5% SLO budget is left? |
+| SLO | SLO Burn Rate | Errors | > 1.0 = burning budget faster than allowed |
+
+### Alert Thresholds
 
 | Metric | Warning | Critical |
 |---|---|---|
 | Latency P95 | > 250ms | > 1s |
 | 5xx Error Rate | > 1% | > 5% |
 | Active Requests | > 50 | > 80 |
-| DB Connections | > 15 | > 20 |
+| App DB Pool Connections | > 15 | > 20 |
+| Host CPU % | > 70% | > 90% |
+| Host Memory % | > 75% | > 90% |
+| Postgres Active Connections | > 15 | > 20 |
+| Deadlocks/min | any | any |
+| Error Budget Remaining | < 75% | < 25% |
 
 ---
 
-## Runbook Procedures
-
-### SERVICE DOWN
+## Playbook 1: Service Down (P1)
 
 **Symptom:** Dashboard shows no data, `/health` unreachable, or `up{job="flask_app"} == 0` in Prometheus.
 
-1. Check which service is down: `docker compose ps`
-2. Read the last 50 log lines: `docker compose logs <service> --tail=50`
-3. Restart the service: `docker compose restart <service>`
-4. If that fails, full restart: `docker compose down && docker compose up -d`
-5. Verify health: `curl http://localhost:5000/health`
+### Step 1 — Confirm the scope (1 min)
+```bash
+docker compose ps
+```
+Identify which service shows `exited` or is missing.
+
+### Step 2 — Read crash logs (2 min)
+```bash
+docker compose logs web --tail=100
+docker compose logs db --tail=50
+```
+
+### Step 3 — Attempt restart
+```bash
+docker compose restart web
+```
+Watch Grafana — the Latency and Traffic panels should show data within 30s.
+
+### Step 4 — If restart fails, full stack restart
+```bash
+docker compose down && docker compose up -d
+```
+
+### Step 5 — Verify recovery
+```bash
+curl http://localhost:5000/health
+# Expected: {"status": "ok"}
+```
 
 ---
 
-### HIGH LATENCY (P95 > 1s)
+## Playbook 2: High Error Rate (P2)
 
-**Symptom:** Panel 1 P95 line is red or trending up.
+**Symptom:** Panel "Errors — 5xx Rate" background is red (> 5%).
 
-1. Check **which endpoint** is slow — use panel 1 filtered by endpoint label.
-2. Check **DB connections** (panel 6) — if high, DB is the bottleneck.
-3. Read DB slow query logs: `docker compose logs db --tail=100`
-4. Read web logs: `docker compose logs web --since=5m`
-5. If DB is the problem, restart it: `docker compose restart db`, then `docker compose restart web`
-6. If web is the problem, scale or restart: `docker compose restart web`
+### Step 1 — Confirm it's sustained (2 min)
+Watch the panel for 2 minutes. A single spike < 30s is likely a blip. If it stays red, proceed.
 
----
+### Step 2 — Identify the offending endpoint (2 min)
+Use the **Endpoint** dropdown at the top of the dashboard to filter panel 2 (Traffic — RPS).
+Look for the endpoint with a sudden surge in error-coded traffic.
 
-### HIGH ERROR RATE (5xx > 5%)
+Or query directly in Prometheus Explore (`http://localhost:9090`):
+```promql
+sum by (endpoint, status_code) (rate(http_requests_total{status_code=~"5.."}[5m]))
+```
 
-**Symptom:** Panel 3 background is red.
+### Step 3 — Read the logs (3 min)
+```bash
+docker compose logs web --since=10m | grep -i error
+```
+Find the first ERROR line that preceded the alert. Copy the traceback.
 
-1. Note the **start time** on panel 3 — when did it begin?
-2. Check what changed at that time: `git log --since="30 minutes ago"`
-3. Read error logs: `docker compose logs web --since=10m | grep ERROR`
-4. Check if DB is reachable: `docker compose exec web python -c "from app.database import db; db.connect(); print('ok')"`
-5. If DB is down: `docker compose restart db && docker compose restart web`
-6. If it's a code bug, revert: `git revert HEAD && docker compose restart web`
+### Step 4 — Check if DB is the cause
+If the error message mentions a DB connection or query failure, check:
+```promql
+pg_stat_activity_count{datname="hackathon_db"}
+```
+If connections are at or above 20, DB pool is exhausted → follow Playbook 4.
 
----
+### Step 5 — Check for a bad deploy
+```bash
+git log --oneline -5
+```
+If a recent commit correlates with the alert start time, revert it:
+```bash
+git revert HEAD
+docker compose build web && docker compose up -d web
+```
 
-### DB CONNECTION EXHAUSTION (DB Connections > 20)
-
-**Symptom:** Panel 6 background is red, app may be throwing connection errors.
-
-1. Check current connections directly:
-   ```
-   docker compose exec db psql -U postgres -c "SELECT count(*) FROM pg_stat_activity;"
-   ```
-2. Identify which queries are open:
-   ```
-   docker compose exec db psql -U postgres -c "SELECT pid, state, query, query_start FROM pg_stat_activity WHERE state != 'idle';"
-   ```
-3. Restart web to release all connections: `docker compose restart web`
-4. If connections are still stuck, terminate them:
-   ```
-   docker compose exec db psql -U postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE state = 'idle in transaction';"
-   ```
-
----
-
-### HIGH SATURATION (Active Requests > 80)
-
-**Symptom:** Panel 4 gauge is red.
-
-1. Check request rate (panel 2) — is traffic actually high or are requests hanging?
-2. If traffic is normal but active count is high → requests are **hanging**, likely DB wait.
-3. Follow the DB Connection Exhaustion procedure above.
-4. If traffic is genuinely high → you're overloaded. Identify the hot endpoint on panel 2.
+### Step 6 — Restart as last resort
+```bash
+docker compose restart web
+```
 
 ---
 
-## Bronze/Silver Integration Notes
+## Playbook 3: High Latency (P2)
 
-Once your teammates complete Bronze and Silver:
+**Symptom:** Panel 1 P95 line is red (> 1s) or trending upward for > 5 minutes.
 
-- **Bronze** wires real timing/counts into `http_request_duration_seconds` and `http_requests_total` — all panels auto-populate with real data.
-- **Silver** adds Alertmanager alerts — the thresholds table above becomes automated Discord pings.
-- Update this runbook to reference real alert names once Silver ships.
+### Step 1 — Check CPU and Memory (1 min)
+Open the **Infrastructure** row. If CPU > 90%, the host is overloaded — high latency is a symptom of saturation, not a DB issue.
+
+### Step 2 — Check if latency is DB-driven (2 min)
+Open the **PostgreSQL** row. If "DB Active Connections" is spiking, or "DB Transaction Rate" is dropping while latency climbs, the DB is the bottleneck.
+
+Inspect running queries:
+```bash
+docker compose exec db psql -U postgres hackathon_db \
+  -c "SELECT pid, state, query, query_start FROM pg_stat_activity WHERE state != 'idle' ORDER BY query_start;"
+```
+
+### Step 3 — Kill long-running queries
+If you see queries running for more than 30s:
+```bash
+docker compose exec db psql -U postgres hackathon_db \
+  -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE state = 'active' AND query_start < now() - interval '30 seconds';"
+```
+
+### Step 4 — Restart web if CPU is the cause
+```bash
+docker compose restart web
+```
+
+---
+
+## Playbook 4: DB Connection Exhaustion (P2)
+
+**Symptom:** "DB Active Connections" stat is red, app may be throwing connection errors in logs.
+
+### Step 1 — Confirm connection count
+```bash
+docker compose exec db psql -U postgres hackathon_db \
+  -c "SELECT count(*), state FROM pg_stat_activity GROUP BY state;"
+```
+
+### Step 2 — Find stuck connections
+```bash
+docker compose exec db psql -U postgres hackathon_db \
+  -c "SELECT pid, state, query_start, query FROM pg_stat_activity WHERE state != 'idle' ORDER BY query_start;"
+```
+
+### Step 3 — Restart web to release app connections
+```bash
+docker compose restart web
+```
+This drops all pooled connections from the app side. Confirm count drops.
+
+### Step 4 — Terminate stuck server-side connections
+If connections remain after restarting web:
+```bash
+docker compose exec db psql -U postgres hackathon_db \
+  -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE state = 'idle in transaction';"
+```
+
+---
+
+## Playbook 5: High Saturation — CPU or Memory Spike (P2/P3)
+
+**Symptom:** Infrastructure row — CPU % or Memory % panels are red.
+
+### Step 1 — Identify the process
+CPU spike:
+```bash
+docker stats --no-stream
+```
+Look for the container consuming the most CPU.
+
+Memory spike:
+```bash
+docker stats --no-stream --format "table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}"
+```
+
+### Step 2 — Correlate with traffic
+Check panel 2 (Traffic — RPS). If traffic is elevated, the load is expected.
+If traffic is normal but CPU is high, look for a runaway loop or large query.
+
+### Step 3 — Restart the offending container
+```bash
+docker compose restart web   # or db, prometheus, etc.
+```
+
+---
+
+## Playbook 6: DB Deadlocks (P3)
+
+**Symptom:** "DB Deadlocks/min" panel shows any non-zero value.
+
+Deadlocks are always a bug — two transactions are acquiring locks in conflicting order.
+
+### Step 1 — Confirm and timestamp
+Note when the deadlocks started. Check git log for any recent changes to DB write logic.
+
+### Step 2 — Read Postgres logs
+```bash
+docker compose logs db --since=30m | grep -i deadlock
+```
+
+### Step 3 — File a bug
+Deadlocks rarely need immediate rollback. File a bug with the timestamp, query text, and any relevant deploy. Fix in code — not in prod.
+
+---
+
+## Quick Reference
+
+| Symptom | First panel to check | Likely cause | Fix |
+|---|---|---|---|
+| No data anywhere | Prometheus targets page | Service down | `docker compose ps` |
+| Latency spiking | DB Active Connections | DB bottleneck | Kill long queries, restart web |
+| Error rate > 5% | Traffic by endpoint | Bad deploy or DB down | Check logs, maybe revert |
+| CPU > 90% | Traffic RPS | Traffic spike or loop | Restart web |
+| Memory climbing | Memory % trend | Memory leak | Restart web, file bug |
+| Deadlocks | DB Deadlocks/min | Code bug in write path | File bug, check recent deploy |
+
+---
 
 ## Useful Commands
 
@@ -136,9 +290,25 @@ docker compose down && docker compose up -d
 # Open Prometheus expression browser
 open http://localhost:9090
 
+# Open Grafana dashboard
+open http://localhost:3000
+
 # Check if /metrics is returning data
 curl http://localhost:5000/metrics
 
 # Rebuild after code changes
 docker compose build web && docker compose up -d web
+
+# Run the chaos demo (Sherlock Mode)
+uv run scripts/chaos.py high_error_rate
+uv run scripts/chaos.py traffic_spike
+uv run scripts/chaos.py slow_db
 ```
+
+---
+
+## Integration Notes
+
+- **Bronze** wires real timing/counts into the metric counters and histograms — all Golden Signal panels auto-populate with real data once complete.
+- **Silver** adds Alertmanager alerts — the thresholds table above becomes automated Discord pings.
+- The Infrastructure and PostgreSQL rows are live **now** — node_exporter and postgres_exporter are running and require no further wiring.
