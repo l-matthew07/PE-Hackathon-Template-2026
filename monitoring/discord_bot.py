@@ -138,7 +138,32 @@ def silence_alert(alert_key: str, created_by: str) -> None:
         method="POST",
     )
     with urllib.request.urlopen(req) as resp:
-        print(f"Silence created for {alert_key}: {resp.status}", flush=True)
+        body = json.loads(resp.read())
+        silence_id = body.get("silenceID", "")
+        print(f"Silence created for {alert_key}: {resp.status} id={silence_id}", flush=True)
+        return silence_id
+
+
+def expire_silence(silence_id: str) -> None:
+    """Immediately expire a silence by setting its endsAt to now."""
+    try:
+        # Fetch the silence first
+        req = urllib.request.Request(f"{ALERTMANAGER_URL}/api/v2/silence/{silence_id}")
+        with urllib.request.urlopen(req) as resp:
+            silence = json.loads(resp.read())
+        # Set endsAt to now to expire it
+        now = datetime.now(timezone.utc)
+        silence["endsAt"] = now.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+        req = urllib.request.Request(
+            f"{ALERTMANAGER_URL}/api/v2/silences",
+            data=json.dumps(silence).encode(),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req) as resp:
+            print(f"Silence {silence_id} expired: {resp.status}", flush=True)
+    except Exception as e:
+        print(f"Failed to expire silence {silence_id}: {e}", flush=True)
 
 
 def get_member_tier(member: discord.Member | None) -> int | None:
@@ -230,8 +255,13 @@ async def auto_escalation_loop() -> None:
             if state.get("acknowledged") and alert_key not in active_in_am:
                 state["resolved"] = True
                 print(f"Silenced alert resolved: {alert_key}", flush=True)
+                # Expire the silence so it doesn't linger
+                silence_id = state.get("silence_id")
+                if silence_id:
+                    await asyncio.get_event_loop().run_in_executor(None, expire_silence, silence_id)
                 await channel.send(
-                    f"✅ **{alert_key}** has been resolved."
+                    f"✅ **[RESOLVED] {alert_key}**\n"
+                    f"The service has recovered and is back to normal."
                 )
                 asyncio.get_event_loop().create_task(close_incident_channel(alert_key))
                 continue
@@ -343,19 +373,22 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
         if state.get("acknowledged") or state.get("resolved"):
             return
         try:
-            await asyncio.get_event_loop().run_in_executor(None, silence_alert, alert_key, display_name)
+            silence_id = await asyncio.get_event_loop().run_in_executor(None, silence_alert, alert_key, display_name)
             state["acknowledged"] = True
+            state["silence_id"] = silence_id
 
             # Create private incident channel
+            incident_channel = None
             guild = client.get_guild(GUILD_ID)
             if guild:
                 incident_channel = await create_incident_channel(alert_key, member, guild)
                 if incident_channel:
                     state["incident_channel_id"] = incident_channel.id
 
+            channel_mention = f" See <#{incident_channel.id}> to coordinate." if incident_channel else ""
             await message.reply(
                 f"✅ Acknowledged by <@{payload.user_id}> — **{alert_key}** silenced for 1 hour. "
-                f"Escalation stopped. See <#{state.get('incident_channel_id', '')}> to coordinate."
+                f"Escalation stopped.{channel_mention}"
             )
         except Exception as e:
             print(f"Failed to silence: {e}", flush=True)
