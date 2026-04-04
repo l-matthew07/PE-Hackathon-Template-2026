@@ -1,16 +1,26 @@
-from flask import Blueprint, jsonify, request
+from flask_openapi3.blueprint import APIBlueprint
+from flask_openapi3.models.tag import Tag
 
 from app.lib.api import error_response, list_response
 from app.lib.utils import (
     format_datetime,
-    parse_bool,
-    parse_pagination,
+    normalize_pagination,
 )
 from app.models.url import Url
 from app.services.errors import ServiceError
+from app.services.schemas import (
+    ErrorEnvelope,
+    UrlCreatePayload,
+    UrlIdPath,
+    UrlListQuery,
+    UrlListResponse,
+    UrlResponse,
+    UrlUpdatePayload,
+)
 from app.services.urls_service import UrlsService
 
-urls_bp = Blueprint("urls", __name__, url_prefix="/urls")
+urls_tag = Tag(name="urls")
+urls_bp = APIBlueprint("urls", __name__, url_prefix="/urls", abp_tags=[urls_tag])
 
 urls_service = UrlsService()
 
@@ -42,58 +52,52 @@ def _serialize_url(url: Url) -> dict:
     }
 
 
-@urls_bp.get("")
-def list_urls():
-    page, per_page = parse_pagination()
+@urls_bp.get("", responses={200: UrlListResponse})
+def list_urls(query: UrlListQuery):
+    page, per_page = normalize_pagination(query.page, query.per_page)
     offset = (page - 1) * per_page
 
-    query = Url.select()
+    db_query = Url.select()
 
-    user_id = request.args.get("user_id", type=int)
-    if user_id is not None:
-        query = query.where(Url.user_id == user_id)
+    if query.user_id is not None:
+        db_query = db_query.where(Url.user_id == query.user_id)
 
-    is_active = request.args.get("is_active")
-    if is_active is not None:
-        query = query.where(Url.is_active == parse_bool(is_active))
+    if query.is_active is not None:
+        db_query = db_query.where(Url.is_active == query.is_active)
 
-    urls = query.order_by(Url.id).limit(per_page).offset(offset)
+    urls = db_query.order_by(Url.id).limit(per_page).offset(offset)
     return list_response([_serialize_url(url) for url in urls], page, per_page)
 
 
-@urls_bp.get("/<int:url_id>")
-def get_url(url_id: int):
-    url = Url.get_or_none(Url.id == url_id)
+@urls_bp.get("/<int:url_id>", responses={200: UrlResponse, 404: ErrorEnvelope})
+def get_url(path: UrlIdPath):
+    url = Url.get_or_none(Url.id == path.url_id)
     if url is None:
         return error_response("URL not found", "NOT_FOUND", 404)
-    return jsonify(_serialize_url(url)), 200
+    return _serialize_url(url), 200
 
 
-@urls_bp.post("")
-def create_url():
-    payload = request.get_json(silent=True) or {}
-
+@urls_bp.post("", responses={201: UrlResponse, 400: ErrorEnvelope, 409: ErrorEnvelope})
+def create_url(body: UrlCreatePayload):
     try:
-        url = urls_service.create_url(payload)
+        url = urls_service.create_url(body.model_dump())
     except ServiceError as exc:
         return error_response(exc.message, exc.code, exc.status, details=exc.details)
 
-    return jsonify(_serialize_url(url)), 201
+    return _serialize_url(url), 201
 
 
-@urls_bp.put("/<int:url_id>")
-def update_url(url_id: int):
-    payload = request.get_json(silent=True) or {}
-
+@urls_bp.put("/<int:url_id>", responses={200: UrlResponse, 400: ErrorEnvelope, 404: ErrorEnvelope, 409: ErrorEnvelope})
+def update_url(path: UrlIdPath, body: UrlUpdatePayload):
     try:
-        url = urls_service.update_url(url_id, payload)
+        url = urls_service.update_url(path.url_id, body.model_dump(exclude_unset=True))
     except ServiceError as exc:
         return error_response(exc.message, exc.code, exc.status, details=exc.details)
 
-    return jsonify(_serialize_url(url)), 200
+    return _serialize_url(url), 200
 
 
 @urls_bp.delete("/<int:url_id>")
-def delete_url(url_id: int):
-    Url.delete().where(Url.id == url_id).execute()
+def delete_url(path: UrlIdPath):
+    Url.delete().where(Url.id == path.url_id).execute()
     return "", 204

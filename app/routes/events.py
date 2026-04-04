@@ -1,21 +1,26 @@
 import json
 
-from flask import Blueprint, jsonify, request
+from flask_openapi3.blueprint import APIBlueprint
+from flask_openapi3.models.tag import Tag
 
 from app.lib.api import error_response, list_response
-from app.lib.utils import format_datetime, parse_pagination
+from app.lib.utils import format_datetime, normalize_pagination
 from app.models.event import Event
-from app.routes.bulk import register_bulk_load_endpoint
 from app.services.errors import ServiceError
+from app.services.schemas import (
+    BulkLoadBody,
+    BulkLoadResponse,
+    ErrorEnvelope,
+    EventCreatePayload,
+    EventListQuery,
+    EventListResponse,
+    EventResponse,
+)
 from app.services.events_service import EventsService
 
-events_bp = Blueprint("events", __name__, url_prefix="/events")
+events_tag = Tag(name="events")
+events_bp = APIBlueprint("events", __name__, url_prefix="/events", abp_tags=[events_tag])
 events_service = EventsService()
-register_bulk_load_endpoint(
-    events_bp,
-    events_service.bulk_load_events,
-    default_file="events.csv",
-)
 
 def _serialize_details(value: object):
     if value is None or value == "":
@@ -44,36 +49,41 @@ def _serialize_event(event: Event) -> dict:
     }
 
 
-@events_bp.get("")
-def list_events():
-    page, per_page = parse_pagination()
+@events_bp.get("", responses={200: EventListResponse})
+def list_events(query: EventListQuery):
+    page, per_page = normalize_pagination(query.page, query.per_page)
     offset = (page - 1) * per_page
 
-    query = Event.select()
+    db_query = Event.select()
 
-    user_id = request.args.get("user_id", type=int)
-    if user_id is not None:
-        query = query.where(Event.user == user_id)
+    if query.user_id is not None:
+        db_query = db_query.where(Event.user == query.user_id)
 
-    url_id = request.args.get("url_id", type=int)
-    if url_id is not None:
-        query = query.where(Event.url_id == url_id)
+    if query.url_id is not None:
+        db_query = db_query.where(Event.url_id == query.url_id)
 
-    event_type = request.args.get("event_type")
-    if event_type:
-        query = query.where(Event.event_type == event_type)
+    if query.event_type:
+        db_query = db_query.where(Event.event_type == query.event_type)
 
-    events = query.order_by(Event.id).limit(per_page).offset(offset)
+    events = db_query.order_by(Event.id).limit(per_page).offset(offset)
     return list_response([_serialize_event(event) for event in events], page, per_page)
 
 
-@events_bp.post("")
-def create_event():
-    payload = request.get_json(silent=True) or {}
-
+@events_bp.post("", responses={201: EventResponse, 400: ErrorEnvelope, 409: ErrorEnvelope})
+def create_event(body: EventCreatePayload):
     try:
-        event = events_service.create_event(payload)
+        event = events_service.create_event(body.model_dump())
     except ServiceError as exc:
         return error_response(exc.message, exc.code, exc.status, details=exc.details)
 
-    return jsonify(_serialize_event(event)), 201
+    return _serialize_event(event), 201
+
+
+@events_bp.post("/bulk", responses={200: BulkLoadResponse, 400: ErrorEnvelope})
+def bulk_load_events(body: BulkLoadBody):
+    filename = (body.file or "events.csv").strip() or "events.csv"
+    try:
+        loaded_count = events_service.bulk_load_events(filename)
+    except ServiceError as exc:
+        return error_response(exc.message, exc.code, exc.status, details=exc.details)
+    return {"file": filename, "row_count": body.row_count, "loaded": loaded_count}, 200

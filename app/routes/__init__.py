@@ -10,7 +10,7 @@ def register_routes(app):
     from app.routes.urls import urls_bp
     from app.routes.users import users_bp
 
-    app.register_blueprint(shortener_bp)
-    app.register_blueprint(users_bp)
-    app.register_blueprint(urls_bp)
-    app.register_blueprint(events_bp)
+    app.register_api(shortener_bp)
+    app.register_api(users_bp)
+    app.register_api(urls_bp)
+    app.register_api(events_bp)

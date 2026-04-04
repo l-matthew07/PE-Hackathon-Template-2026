@@ -54,6 +54,12 @@ uv run run.py
 # 6. Verify
 curl http://localhost:5000/health
 # → {"status":"ok"}
+
+# 7. Open API docs
+# OpenAPI JSON
+curl http://localhost:5000/openapi/openapi.json
+# Scalar UI
+open http://localhost:5000/docs
 ```
 
 ## Docker Quick Start
@@ -70,6 +76,7 @@ docker compose up -d web nginx
 
 # 4. Verify
 curl http://localhost/health
+curl http://localhost/openapi/openapi.json
 ```
 
 ## VM Deployment Script (Reusable Locally)

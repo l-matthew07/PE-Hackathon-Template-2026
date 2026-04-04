@@ -1,54 +1,175 @@
 import json
 import re
-from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 from urllib.parse import urlparse
+
+from pydantic import BaseModel, Field
 
 from app.services.errors import ValidationError
 
 _EMAIL_REGEX = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
-@dataclass(frozen=True)
-class UserCreatePayload:
-    username: str
-    email: str
+class UserCreatePayload(BaseModel):
+    username: str = Field(..., min_length=1)
+    email: str = Field(..., min_length=1)
 
 
-@dataclass(frozen=True)
-class UserUpdatePayload:
-    username: str | None
-    email: str | None
+class UserUpdatePayload(BaseModel):
+    username: str | None = None
+    email: str | None = None
 
 
-@dataclass(frozen=True)
-class UrlCreatePayload:
+class UrlCreatePayload(BaseModel):
     original_url: str
-    title: str | None
-    user_id: int | None
-    short_code: str | None
+    title: str | None = None
+    user_id: int | None = None
+    short_code: str | None = None
 
 
-@dataclass(frozen=True)
-class UrlUpdatePayload:
-    original_url: str | None
-    title: str | None
-    is_active: bool | None
+class UrlUpdatePayload(BaseModel):
+    original_url: str | None = None
+    title: str | None = None
+    is_active: bool | None = None
 
 
-@dataclass(frozen=True)
-class EventCreatePayload:
+class EventCreatePayload(BaseModel):
     url_id: int
     user_id: int
     event_type: str
     timestamp: datetime
-    details: str | None
+    details: str | None = None
 
 
-@dataclass(frozen=True)
-class ShortenPayload:
+class ShortenPayload(BaseModel):
+    original_url: str
+    title: str | None = None
+
+
+class IdPath(BaseModel):
+    user_id: int | None = None
+    url_id: int | None = None
+
+
+class UserIdPath(BaseModel):
+    user_id: int
+
+
+class UrlIdPath(BaseModel):
+    url_id: int
+
+
+class ShortCodePath(BaseModel):
+    short_code: str
+
+
+class PaginationQuery(BaseModel):
+    page: int = 1
+    per_page: int = 50
+
+
+class UrlListQuery(PaginationQuery):
+    user_id: int | None = None
+    is_active: bool | None = None
+
+
+class EventListQuery(PaginationQuery):
+    user_id: int | None = None
+    url_id: int | None = None
+    event_type: str | None = None
+
+
+class BulkLoadBody(BaseModel):
+    file: str | None = None
+    row_count: int | None = None
+
+
+class ErrorBody(BaseModel):
+    code: str
+    message: str
+    details: dict[str, Any] | None = None
+
+
+class ErrorEnvelope(BaseModel):
+    error: ErrorBody
+
+
+class ListMeta(BaseModel):
+    page: int
+    per_page: int
+    count: int
+
+
+class UserResponse(BaseModel):
+    id: int
+    username: str
+    email: str
+    created_at: str | None
+
+
+class UserListResponse(BaseModel):
+    data: list[UserResponse]
+    meta: ListMeta
+
+
+class UrlResponse(BaseModel):
+    id: int
+    user_id: int | None
+    short_code: str
     original_url: str
     title: str | None
+    is_active: bool
+    created_at: str | None
+    updated_at: str | None
+
+
+class UrlListResponse(BaseModel):
+    data: list[UrlResponse]
+    meta: ListMeta
+
+
+class EventResponse(BaseModel):
+    id: int
+    url_id: int
+    user_id: int | None
+    event_type: str
+    timestamp: str | None
+    details: Any | None
+
+
+class EventListResponse(BaseModel):
+    data: list[EventResponse]
+    meta: ListMeta
+
+
+class ShortenResponse(BaseModel):
+    original_url: str
+    short_code: str
+    short_url: str
+
+
+class HealthResponse(BaseModel):
+    status: str
+
+
+class BulkLoadResponse(BaseModel):
+    file: str
+    row_count: int | None = None
+    loaded: int
+
+
+def _coerce_bool(name: str, value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+
+    text = str(value).strip().lower()
+    if text in {"1", "true", "t", "yes", "y", "on"}:
+        return True
+    if text in {"0", "false", "f", "no", "n", "off"}:
+        return False
+
+    raise ValidationError(f"{name} must be a boolean", details={"fields": [name]})
 
 
 def _clean_string(value: object) -> str:
@@ -78,16 +199,7 @@ def _optional_int(name: str, value: object) -> int | None:
 def _optional_bool(name: str, value: object) -> bool | None:
     if value is None:
         return None
-    if isinstance(value, bool):
-        return value
-
-    text = str(value).strip().lower()
-    if text in {"1", "true", "t", "yes", "y", "on"}:
-        return True
-    if text in {"0", "false", "f", "no", "n", "off"}:
-        return False
-
-    raise ValidationError(f"{name} must be a boolean", details={"fields": [name]})
+    return _coerce_bool(name, value)
 
 
 def _validate_http_url(name: str, value: str) -> None:
@@ -230,3 +342,38 @@ def parse_shorten_payload(payload: dict) -> ShortenPayload:
 
     _validate_http_url("url", original_url)
     return ShortenPayload(original_url=original_url, title=title)
+
+
+def parse_bulk_load_payload(payload: dict, default_file: str) -> BulkLoadResponse:
+    filename = str(payload.get("file") or default_file).strip() or default_file
+    raw_row_count = payload.get("row_count")
+    row_count: int | None = None
+    if raw_row_count is not None and raw_row_count != "":
+        try:
+            row_count = int(str(raw_row_count))
+        except (TypeError, ValueError):
+            raise ValidationError("row_count must be an integer", details={"fields": ["row_count"]})
+    return BulkLoadResponse(file=filename, row_count=row_count, loaded=0)
+
+
+def parse_url_list_query(payload: dict) -> UrlListQuery:
+    user_id = _optional_int("user_id", payload.get("user_id"))
+    is_active = _optional_bool("is_active", payload.get("is_active"))
+    page = _optional_int("page", payload.get("page")) or 1
+    per_page = _optional_int("per_page", payload.get("per_page")) or 50
+    return UrlListQuery(page=max(1, page), per_page=max(1, per_page), user_id=user_id, is_active=is_active)
+
+
+def parse_event_list_query(payload: dict) -> EventListQuery:
+    user_id = _optional_int("user_id", payload.get("user_id"))
+    url_id = _optional_int("url_id", payload.get("url_id"))
+    event_type = _clean_string(payload.get("event_type")) or None
+    page = _optional_int("page", payload.get("page")) or 1
+    per_page = _optional_int("per_page", payload.get("per_page")) or 50
+    return EventListQuery(
+        page=max(1, page),
+        per_page=max(1, per_page),
+        user_id=user_id,
+        url_id=url_id,
+        event_type=event_type,
+    )

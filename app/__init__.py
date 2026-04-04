@@ -1,5 +1,7 @@
 from dotenv import load_dotenv
-from flask import Flask, jsonify
+from flask import jsonify, redirect
+from flask_openapi3.models.info import Info
+from flask_openapi3.openapi import OpenAPI
 from werkzeug.exceptions import HTTPException
 
 from app.config import get_settings
@@ -12,7 +14,13 @@ def create_app():
     load_dotenv()
     get_settings()
 
-    app = Flask(__name__)
+    info = Info(
+        title="MLH PE Hackathon API",
+        version="1.0.0",
+        description="The best URL shortener!",
+    )
+    app = OpenAPI(__name__, info=info)
+    app.config["SCALAR_CONFIG"] = {"theme": "deepSpace"}
 
     init_db(app)
 
@@ -33,7 +41,7 @@ def create_app():
 
     @app.errorhandler(HTTPException)
     def handle_http_error(exc: HTTPException):
-        return error_response(exc.description, "HTTP_ERROR", exc.code or 500)
+        return error_response(exc.description or "Unknown error", "HTTP_ERROR", exc.code or 500)
 
     @app.errorhandler(Exception)
     def handle_unexpected_error(exc: Exception):
@@ -43,5 +51,9 @@ def create_app():
     @app.route("/health")
     def health():
         return jsonify(status="ok")
+
+    @app.route("/docs")
+    def scalar_docs():
+        return redirect("/openapi/scalar", code=302) # slightly cursed but works
 
     return app

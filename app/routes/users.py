@@ -1,20 +1,27 @@
-from flask import Blueprint, jsonify, request
+from flask_openapi3.blueprint import APIBlueprint
+from flask_openapi3.models.tag import Tag
 
 from app.lib.api import error_response, list_response
-from app.lib.utils import format_datetime, parse_pagination
+from app.lib.utils import format_datetime, normalize_pagination
 from app.models.user import User
-from app.routes.bulk import register_bulk_load_endpoint
 from app.services.errors import ServiceError
+from app.services.schemas import (
+    BulkLoadBody,
+    BulkLoadResponse,
+    ErrorEnvelope,
+    PaginationQuery,
+    UserCreatePayload,
+    UserIdPath,
+    UserListResponse,
+    UserResponse,
+    UserUpdatePayload,
+)
 from app.services.users_service import UsersService
 
-users_bp = Blueprint("users", __name__, url_prefix="/users")
+users_tag = Tag(name="users")
+users_bp = APIBlueprint("users", __name__, url_prefix="/users", abp_tags=[users_tag])
 
 users_service = UsersService()
-register_bulk_load_endpoint(
-    users_bp,
-    users_service.bulk_load_users,
-    default_file="users.csv",
-)
 
 def _serialize_user(user: User) -> dict:
     return {
@@ -25,49 +32,55 @@ def _serialize_user(user: User) -> dict:
     }
 
 
-@users_bp.get("")
-def list_users():
-    page, per_page = parse_pagination()
+@users_bp.get("", responses={200: UserListResponse})
+def list_users(query: PaginationQuery):
+    page, per_page = normalize_pagination(query.page, query.per_page)
     offset = (page - 1) * per_page
     users = User.select().order_by(User.id).limit(per_page).offset(offset)
     return list_response([_serialize_user(user) for user in users], page, per_page)
 
 
-@users_bp.get("/<int:user_id>")
-def get_user(user_id: int):
-    user = User.get_or_none(User.id == user_id)
+@users_bp.get("/<int:user_id>", responses={200: UserResponse, 404: ErrorEnvelope})
+def get_user(path: UserIdPath):
+    user = User.get_or_none(User.id == path.user_id)
     if user is None:
         return error_response("User not found", "NOT_FOUND", 404)
-    return jsonify(_serialize_user(user)), 200
+    return _serialize_user(user), 200
 
 
-@users_bp.post("")
-def create_user():
-    payload = request.get_json(silent=True) or {}
-
+@users_bp.post("", responses={201: UserResponse, 400: ErrorEnvelope, 409: ErrorEnvelope})
+def create_user(body: UserCreatePayload):
     try:
-        user = users_service.create_user(payload)
+        user = users_service.create_user(body.model_dump())
     except ServiceError as exc:
         return error_response(exc.message, exc.code, exc.status, details=exc.details)
 
-    return jsonify(_serialize_user(user)), 201
+    return _serialize_user(user), 201
 
 
-@users_bp.put("/<int:user_id>")
-def update_user(user_id: int):
-    payload = request.get_json(silent=True) or {}
-
+@users_bp.put("/<int:user_id>", responses={200: UserResponse, 400: ErrorEnvelope, 404: ErrorEnvelope, 409: ErrorEnvelope})
+def update_user(path: UserIdPath, body: UserUpdatePayload):
     try:
-        user = users_service.update_user(user_id, payload)
+        user = users_service.update_user(path.user_id, body.model_dump(exclude_unset=True))
     except ServiceError as exc:
         return error_response(exc.message, exc.code, exc.status, details=exc.details)
 
-    return jsonify(_serialize_user(user)), 200
+    return _serialize_user(user), 200
 
 
 @users_bp.delete("/<int:user_id>")
-def delete_user(user_id: int):
-    deleted = User.delete().where(User.id == user_id).execute()
+def delete_user(path: UserIdPath):
+    deleted = User.delete().where(User.id == path.user_id).execute()
     if deleted == 0:
         return "", 204
     return "", 204
+
+
+@users_bp.post("/bulk", responses={200: BulkLoadResponse, 400: ErrorEnvelope})
+def bulk_load_users(body: BulkLoadBody):
+    filename = (body.file or "users.csv").strip() or "users.csv"
+    try:
+        loaded_count = users_service.bulk_load_users(filename)
+    except ServiceError as exc:
+        return error_response(exc.message, exc.code, exc.status, details=exc.details)
+    return {"file": filename, "row_count": body.row_count, "loaded": loaded_count}, 200

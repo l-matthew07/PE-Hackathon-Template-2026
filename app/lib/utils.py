@@ -25,6 +25,13 @@ def parse_pagination(default_per_page: int = 100) -> tuple[int, int]:
     return page, per_page
 
 
+def normalize_pagination(page: int, per_page: int) -> tuple[int, int]:
+    settings = get_settings()
+    safe_page = max(1, page)
+    safe_per_page = min(settings.max_per_page, max(1, per_page))
+    return safe_page, safe_per_page
+
+
 def parse_bool(value: object, default: bool = False) -> bool:
     if value is None:
         return default
