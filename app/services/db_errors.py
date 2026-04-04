@@ -26,6 +26,22 @@ def _extract_constraint_name(exc: IntegrityError) -> str | None:
     return None
 
 
+def is_url_short_code_conflict(exc: IntegrityError) -> bool:
+    message = str(exc).lower()
+    constraint_name = _extract_constraint_name(exc)
+    if constraint_name and "short_code" in constraint_name:
+        return True
+    return "unique" in message and "short_code" in message
+
+
+def is_url_original_url_conflict(exc: IntegrityError) -> bool:
+    message = str(exc).lower()
+    constraint_name = _extract_constraint_name(exc)
+    if constraint_name and "original_url" in constraint_name:
+        return True
+    return "unique" in message and "original_url" in message
+
+
 def classify_user_integrity_error(exc: IntegrityError):
     message = str(exc).lower()
     constraint_name = _extract_constraint_name(exc)
@@ -46,10 +62,10 @@ def classify_url_integrity_error(exc: IntegrityError):
     message = str(exc).lower()
     constraint_name = _extract_constraint_name(exc)
 
-    if constraint_name and "short_code" in constraint_name:
+    if is_url_short_code_conflict(exc):
         raise ConflictError("short_code already exists")
-    if "unique" in message and "short_code" in message:
-        raise ConflictError("short_code already exists")
+    if is_url_original_url_conflict(exc):
+        raise ConflictError("original_url already exists")
     if "foreign key" in message or (constraint_name and "user" in constraint_name):
         raise ValidationError("user_id does not reference an existing user")
 

@@ -34,6 +34,20 @@ class TestClassifyUrlIntegrityError:
         with pytest.raises(ConflictError, match="short_code already exists"):
             classify_url_integrity_error(exc)
 
+    def test_original_url_unique_message(self):
+        exc = IntegrityError("UNIQUE constraint failed: url.original_url")
+        with pytest.raises(ConflictError, match="original_url already exists"):
+            classify_url_integrity_error(exc)
+
+    def test_original_url_unique_constraint_name(self):
+        class _Diag:
+            constraint_name = "url_original_url_key"
+
+        exc = IntegrityError("duplicate key value violates unique constraint")
+        exc.diag = _Diag()
+        with pytest.raises(ConflictError, match="original_url already exists"):
+            classify_url_integrity_error(exc)
+
     def test_foreign_key_error(self):
         exc = IntegrityError("FOREIGN KEY constraint failed")
         with pytest.raises(ValidationError, match="user_id"):

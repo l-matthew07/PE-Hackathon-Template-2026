@@ -10,6 +10,11 @@ from peewee import IntegrityError
 from app.database import db
 from app.models.event import Event
 from app.models.url import Url
+from app.services.db_errors import (
+    classify_url_integrity_error,
+    is_url_original_url_conflict,
+    is_url_short_code_conflict,
+)
 from app.services.errors import InternalError, ValidationError
 from app.services.schemas import parse_shorten_payload
 
@@ -18,11 +23,14 @@ _ALPHABET = string.ascii_letters + string.digits
 
 class ShortenerService:
     @staticmethod
-    def _generate_code(length: int = 6) -> str:
+    def _generate_code(length: int = 8) -> str:
         return "".join(secrets.choice(_ALPHABET) for _ in range(length))
 
     def create_short_url(self, payload: dict) -> Url:
         parsed = parse_shorten_payload(payload)
+        existing = Url.get_or_none(Url.original_url == parsed.original_url)
+        if existing is not None:
+            return existing
 
         for _ in range(10):
             code = self._generate_code()
@@ -33,8 +41,15 @@ class ShortenerService:
                     title=parsed.title,
                     updated_at=datetime.utcnow(),
                 )
-            except IntegrityError:
-                continue
+            except IntegrityError as exc:
+                if is_url_short_code_conflict(exc):
+                    continue
+                if is_url_original_url_conflict(exc):
+                    existing = Url.get_or_none(Url.original_url == parsed.original_url)
+                    if existing is not None:
+                        return existing
+                classify_url_integrity_error(exc)
+                raise
 
         raise InternalError("Could not generate a unique short code. Please retry.")
 

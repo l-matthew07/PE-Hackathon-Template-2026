@@ -7,7 +7,11 @@ from peewee import IntegrityError
 
 from app.models.event import Event
 from app.models.url import Url
-from app.services.db_errors import classify_url_integrity_error
+from app.services.db_errors import (
+    classify_url_integrity_error,
+    is_url_original_url_conflict,
+    is_url_short_code_conflict,
+)
 from app.services.errors import InternalError, NotFoundError
 from app.services.schemas import parse_url_create, parse_url_update
 
@@ -16,34 +20,56 @@ _ALPHABET = string.ascii_letters + string.digits
 
 class UrlsService:
     @staticmethod
-    def _generate_code(length: int = 6) -> str:
+    def _generate_code(length: int = 8) -> str:
         return "".join(secrets.choice(_ALPHABET) for _ in range(length))
 
     def create_url(self, payload: dict) -> Url:
         parsed = parse_url_create(payload)
         short_code = parsed.short_code
+        url = None
 
         if not short_code:
+            existing = Url.get_or_none(Url.original_url == parsed.original_url)
+            if existing is not None:
+                return existing
+
             for _ in range(10):
                 candidate = self._generate_code()
-                if Url.get_or_none(Url.short_code == candidate) is None:
+                try:
+                    url = Url.create(
+                        user_id=parsed.user_id,
+                        short_code=candidate,
+                        original_url=parsed.original_url,
+                        title=parsed.title,
+                        updated_at=datetime.utcnow(),
+                    )
                     short_code = candidate
                     break
+                except IntegrityError as exc:
+                    if is_url_short_code_conflict(exc):
+                        continue
+                    if is_url_original_url_conflict(exc):
+                        existing = Url.get_or_none(Url.original_url == parsed.original_url)
+                        if existing is not None:
+                            return existing
+                    classify_url_integrity_error(exc)
+                    raise
 
         if not short_code:
             raise InternalError("Could not generate short_code")
 
-        try:
-            url = Url.create(
-                user_id=parsed.user_id,
-                short_code=short_code,
-                original_url=parsed.original_url,
-                title=parsed.title,
-                updated_at=datetime.utcnow(),
-            )
-        except IntegrityError as exc:
-            classify_url_integrity_error(exc)
-            raise
+        if url is None:
+            try:
+                url = Url.create(
+                    user_id=parsed.user_id,
+                    short_code=short_code,
+                    original_url=parsed.original_url,
+                    title=parsed.title,
+                    updated_at=datetime.utcnow(),
+                )
+            except IntegrityError as exc:
+                classify_url_integrity_error(exc)
+                raise
 
         if parsed.user_id is not None:
             try:

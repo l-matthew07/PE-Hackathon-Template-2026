@@ -87,7 +87,7 @@ class TestServiceErrors:
 class TestGenerateCode:
     def test_default_length(self):
         code = ShortenerService._generate_code()
-        assert len(code) == 6
+        assert len(code) == 8
         assert code.isalnum()
 
     def test_custom_length(self):
