@@ -16,7 +16,12 @@ docker compose up -d db redis
 docker compose --profile setup run --rm migrate
 #docker compose run --rm --no-deps web uv run scripts/seed.py
 
-docker compose up -d --remove-orphans --scale web=2 web nginx prometheus alertmanager discord-relay
+docker compose up -d --remove-orphans --scale web=2 \
+  web nginx \
+  node_exporter postgres_exporter \
+  loki promtail \
+  prometheus grafana \
+  alertmanager discord-relay
 
 docker image prune -f || true
 
