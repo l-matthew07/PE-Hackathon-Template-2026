@@ -115,8 +115,17 @@ async def close_incident_channel(alert_key: str) -> None:
 def silence_alert(alert_key: str, created_by: str) -> None:
     now = datetime.now(timezone.utc)
     ends_at = now + timedelta(hours=1)
+    # alert_key may be "alertname:instance" or just "alertname"
+    if ":" in alert_key:
+        alertname, instance = alert_key.split(":", 1)
+        matchers = [
+            {"name": "alertname", "value": alertname, "isRegex": False, "isEqual": True},
+            {"name": "instance", "value": instance, "isRegex": False, "isEqual": True},
+        ]
+    else:
+        matchers = [{"name": "alertname", "value": alert_key, "isRegex": False, "isEqual": True}]
     silence = {
-        "matchers": [{"name": "alertname", "value": alert_key, "isRegex": False, "isEqual": True}],
+        "matchers": matchers,
         "startsAt": now.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
         "endsAt": ends_at.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
         "createdBy": created_by,
@@ -182,12 +191,19 @@ async def escalate(
 
 
 def get_active_alertmanager_keys() -> set[str]:
-    """Return the set of alertname values currently active (firing) in Alertmanager."""
+    """Return the set of 'alertname:instance' keys currently active in Alertmanager."""
     try:
         req = urllib.request.Request(f"{ALERTMANAGER_URL}/api/v2/alerts")
         with urllib.request.urlopen(req) as resp:
             alerts = json.loads(resp.read())
-        return {a["labels"]["alertname"] for a in alerts if a["status"]["state"] != "suppressed"}
+        keys = set()
+        for a in alerts:
+            if a["status"]["state"] == "suppressed":
+                continue
+            name = a["labels"]["alertname"]
+            instance = a["labels"].get("instance", "")
+            keys.add(f"{name}:{instance}" if instance else name)
+        return keys
     except Exception as e:
         print(f"Failed to query Alertmanager alerts: {e}", flush=True)
         return set()

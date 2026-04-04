@@ -56,8 +56,12 @@ def send_to_discord(payload: dict) -> None:
 
     mention = f"<@&{ONCALL_ROLE_ID}> " if ONCALL_ROLE_ID and firing else ""
     icon = "🚨" if firing else "✅"
-    alert_names = ", ".join({a["labels"].get("alertname", "Alert") for a in alerts})
-    content = f"{mention}{icon} {alert_names}"
+    alert_keys = ", ".join(
+        f"{a['labels'].get('alertname', 'Alert')}:{a['labels'].get('instance', '')}"
+        if a['labels'].get('instance') else a['labels'].get('alertname', 'Alert')
+        for a in alerts
+    )
+    content = f"{mention}{icon} {alert_keys}"
 
     discord_payload = json.dumps({"content": content, "embeds": embeds}).encode()
     log(f"Sending to Discord: {discord_payload.decode()}")
