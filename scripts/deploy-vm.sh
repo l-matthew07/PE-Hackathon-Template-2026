@@ -16,7 +16,7 @@ docker compose up -d db redis
 docker compose --profile setup run --rm migrate
 docker compose run --rm --no-deps web uv run scripts/seed.py
 
-docker compose up -d --remove-orphans web nginx
+docker compose up -d --remove-orphans --scale web=2 web nginx
 
 docker image prune -f || true
 

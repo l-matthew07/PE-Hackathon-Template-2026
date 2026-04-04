@@ -97,7 +97,7 @@ chmod +x scripts/deploy-vm.sh
 
 ```bash
 k6 run load-tests/k6-quest.js \
-    -e BASE_URL=http://localhost \
+    -e BASE_URL=http://<your-do-ip> \
     -e VUS=50 \
     -e DURATION=2m \
     -e SHORTEN_RATIO=0.2
@@ -110,12 +110,15 @@ Record:
 ### Silver (200 concurrent users, scale-out)
 
 ```bash
-# Proof of scale-out
-docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+# Scale app fleet to 4 replicas behind nginx
+docker compose up -d --scale web=4 web nginx
+
+# Proof of scale-out (capture screenshot)
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E "web|nginx"
 
 # Load test
 k6 run load-tests/k6-quest.js \
-    -e BASE_URL=http://localhost \
+    -e BASE_URL=http://<your-do-ip> \
     -e VUS=200 \
     -e DURATION=3m \
     -e SHORTEN_RATIO=0.2
@@ -127,8 +130,11 @@ Target:
 ### Gold (500 concurrent users + caching)
 
 ```bash
+# Scale app fleet higher for tsunami test
+docker compose up -d --scale web=8 web nginx
+
 k6 run load-tests/k6-quest.js \
-    -e BASE_URL=http://localhost \
+    -e BASE_URL=http://<your-do-ip> \
     -e VUS=500 \
     -e DURATION=4m \
     -e SHORTEN_RATIO=0.15
@@ -139,10 +145,12 @@ Target:
 
 ### Notes
 
-- Traffic goes through Nginx at port 80 and is distributed across two `web` replicas.
+- Traffic goes through Nginx at port 80 and is distributed across scaled `web` replicas.
 - Migrations and seed data are applied during deployment (`scripts/deploy-vm.sh`) before the web fleet is started.
 - Redirect lookups are cached in Redis to cut repeated database reads.
 - Keep FLASK_DEBUG disabled for load testing and production-like runs.
+- Containers serve with Gunicorn (`wsgi:app`) for concurrent-load stability.
+- Optional quest controls: `TIER=bronze|silver|gold`, `RESOLVE_RATIO=0.65` for redirect-heavy traffic, and `STAGES="30s:50,1m:200,2m:500"` for ramp testing.
 
 ## Migrations (peewee-migrate)
 
