@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from flask import g, jsonify, redirect, request
 from flask_openapi3.models.info import Info
 from flask_openapi3.openapi import OpenAPI
+from prometheus_flask_exporter import PrometheusMetrics
 from werkzeug.exceptions import HTTPException
 
 from app.config import get_settings
