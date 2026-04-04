@@ -1,3 +1,5 @@
+import logging
+
 from flask import Blueprint, jsonify, redirect, request
 
 from app.cache import cache_get, cache_set
@@ -8,6 +10,8 @@ from app.routes.bulk import register_bulk_load_endpoint
 from app.routes.metrics import url_shortener_redirects_total
 from app.services.errors import ServiceError
 from app.services.shortener_service import ShortenerService
+
+logger = logging.getLogger(__name__)
 
 shortener_bp = Blueprint("shortener", __name__)
 shortener_service = ShortenerService()
@@ -33,8 +37,10 @@ def shorten_url():
     try:
         url = shortener_service.create_short_url(payload)
     except ServiceError as exc:
+        logger.warning("URL validation failed: %s", exc.message)
         return error_response(exc.message, exc.code, exc.status, details=exc.details)
 
+    logger.info("URL shortened: %s -> %s", url.original_url, url.short_code)
     return (
         jsonify(
             original_url=url.original_url,
@@ -55,6 +61,7 @@ def resolve_short_url(short_code: str):
 
     url = Url.get_or_none((Url.short_code == short_code) & (Url.is_active == True))
     if url is None:
+        logger.warning("Short URL not found: %s", short_code)
         url_shortener_redirects_total.labels(status="miss").inc()
         return error_response("Short URL not found", "NOT_FOUND", 404)
 

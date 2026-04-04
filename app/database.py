@@ -1,6 +1,10 @@
+import logging
+
 from peewee import DatabaseProxy, Model, PostgresqlDatabase
 
 from app.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 db = DatabaseProxy()
 
@@ -19,7 +23,13 @@ def init_db(app):
         user=settings.database_user,
         password=settings.database_password,
     )
-    db.initialize(database)
+    try:
+        db.initialize(database)
+    except Exception:
+        logger.error("Failed to connect to database at %s:%s", settings.database_host, settings.database_port)
+        raise
+
+    logger.info("Database initialised: %s@%s:%s", settings.database_name, settings.database_host, settings.database_port)
 
     from app.models.url import Url
     with database:
