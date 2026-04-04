@@ -1,0 +1,39 @@
+groups:
+  - name: flask_shortener_alerts
+    rules:
+      - alert: ServiceDown
+        expr: up{job="flask-shortener"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.instance }} is DOWN"
+          description: >
+            Prometheus cannot scrape {{ $labels.instance }}.
+            The service has been unreachable for more than 1 minute.
+          resolved_summary: "{{ $labels.instance }} is back up"
+          resolved_description: >
+            {{ $labels.instance }} is responding again and has been restored to service.
+
+      - alert: HighErrorRate
+        expr: >
+          (
+            sum by (instance) (
+              rate(flask_http_request_total{job="flask-shortener", status=~"5.."}[2m])
+            )
+            /
+            sum by (instance) (
+              rate(flask_http_request_total{job="flask-shortener"}[2m])
+            )
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} has a high error rate"
+          description: >
+            5xx responses exceed 5% of all traffic over the last 2 minutes.
+            A human should investigate.
+          resolved_summary: "{{ $labels.instance }} error rate back to normal"
+          resolved_description: >
+            5xx error rate has dropped below 5%. No further action needed.

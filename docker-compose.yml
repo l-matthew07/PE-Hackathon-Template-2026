@@ -94,7 +94,51 @@ services:
       timeout: 5s
       retries: 5
 
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+      - promdata:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    depends_on:
+      web1:
+        condition: service_healthy
+      web2:
+        condition: service_healthy
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  discord-relay:
+    image: python:3.13-alpine
+    command: python /app/discord_relay.py
+    volumes:
+      - ./monitoring/discord_relay.py:/app/discord_relay.py:ro
+    environment:
+      DISCORD_WEBHOOK: ${DISCORD_WEBHOOK_URL}
+      DISCORD_ONCALL_ROLE_ID: "1490051693251919962"
+    ports:
+      - "9094:9094"
+    restart: unless-stopped
+
 volumes:
   pgdata:
   redisdata:
+  promdata:
 

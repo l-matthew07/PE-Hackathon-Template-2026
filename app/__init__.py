@@ -1,7 +1,10 @@
+import os
+
 from dotenv import load_dotenv
 from flask import jsonify, redirect
 from flask_openapi3.models.info import Info
 from flask_openapi3.openapi import OpenAPI
+from prometheus_flask_exporter import PrometheusMetrics
 from werkzeug.exceptions import HTTPException
 
 from app.config import get_settings
@@ -21,6 +24,12 @@ def create_app():
     )
     app = OpenAPI(__name__, info=info)
     app.config["SCALAR_CONFIG"] = {"theme": "deepSpace"}
+
+    PrometheusMetrics(
+        app,
+        group_by="url_rule",
+        default_labels={"instance": os.environ.get("HOSTNAME", "unknown")},
+    )
 
     init_db(app)
 

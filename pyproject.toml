@@ -12,5 +12,5 @@ dependencies = [
     "psycopg2-binary>=2.9",
     "python-dotenv>=1.0",
     "redis>=6.0",
-    "flask-openapi3[scalar]>=4.3.1",
+    "prometheus-flask-exporter>=0.23",
 ]
