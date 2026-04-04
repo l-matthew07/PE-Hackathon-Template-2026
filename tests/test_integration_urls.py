@@ -71,6 +71,54 @@ class TestGetUrl:
         resp = client.get("/urls/99999")
         assert resp.status_code == 404
 
+    def test_get_uses_cache_hit_without_db_lookup(self, client, monkeypatch):
+        created = client.post("/urls", json={"original_url": "https://cached-url.com", "short_code": "cachehit"})
+        url_id = created.get_json()["id"]
+
+        monkeypatch.setattr(
+            "app.routes.urls.cache_get_json",
+            lambda key: {
+                "id": url_id,
+                "user_id": None,
+                "short_code": "cachehit",
+                "original_url": "https://cached-url.com",
+                "title": None,
+                "is_active": True,
+                "created_at": None,
+                "updated_at": None,
+            },
+        )
+
+        def _fail_db_lookup(*_args, **_kwargs):
+            raise AssertionError("DB lookup should not run on cache hit")
+
+        monkeypatch.setattr("app.routes.urls.Url.get_or_none", _fail_db_lookup)
+
+        resp = client.get(f"/urls/{url_id}")
+        assert resp.status_code == 200
+        assert resp.get_json()["short_code"] == "cachehit"
+
+    def test_get_caches_db_result_on_miss(self, client, monkeypatch):
+        created = client.post("/urls", json={"original_url": "https://cache-miss.com", "short_code": "cachems"})
+        url_id = created.get_json()["id"]
+
+        recorded = {}
+
+        monkeypatch.setattr("app.routes.urls.cache_get_json", lambda key: None)
+
+        def _record_set(key, value, ttl_seconds):
+            recorded["key"] = key
+            recorded["value"] = value
+            recorded["ttl_seconds"] = ttl_seconds
+
+        monkeypatch.setattr("app.routes.urls.cache_set_json", _record_set)
+
+        resp = client.get(f"/urls/{url_id}")
+        assert resp.status_code == 200
+        assert recorded["key"] == f"url:{url_id}"
+        assert recorded["value"]["id"] == url_id
+        assert recorded["ttl_seconds"] > 0
+
 
 class TestListUrls:
     def test_list_empty(self, client):
@@ -110,6 +158,17 @@ class TestUpdateUrl:
         resp = client.put(f"/urls/{url_id}", json={})
         assert resp.status_code in (400, 422)
 
+    def test_update_invalidates_url_cache_key(self, client, monkeypatch):
+        created = client.post("/urls", json={"original_url": "https://invalidate-put.com", "short_code": "invput"})
+        url_id = created.get_json()["id"]
+
+        deleted_keys = []
+        monkeypatch.setattr("app.routes.urls.cache_delete", lambda key: deleted_keys.append(key))
+
+        resp = client.put(f"/urls/{url_id}", json={"title": "Updated"})
+        assert resp.status_code == 200
+        assert deleted_keys == [f"url:{url_id}"]
+
 
 class TestDeleteUrl:
     def test_delete_existing(self, client):
@@ -122,3 +181,14 @@ class TestDeleteUrl:
     def test_delete_nonexistent(self, client):
         resp = client.delete("/urls/99999")
         assert resp.status_code == 204
+
+    def test_delete_invalidates_url_cache_key(self, client, monkeypatch):
+        created = client.post("/urls", json={"original_url": "https://invalidate-del.com", "short_code": "invdel"})
+        url_id = created.get_json()["id"]
+
+        deleted_keys = []
+        monkeypatch.setattr("app.routes.urls.cache_delete", lambda key: deleted_keys.append(key))
+
+        resp = client.delete(f"/urls/{url_id}")
+        assert resp.status_code == 204
+        assert deleted_keys == [f"url:{url_id}"]
