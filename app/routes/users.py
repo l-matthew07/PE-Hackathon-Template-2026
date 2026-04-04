@@ -47,6 +47,20 @@ def create_user():
     return jsonify(_serialize_user(user)), 201
 
 
+@users_bp.post("/bulk")
+def bulk_load_users():
+    payload = request.get_json(silent=True) or {}
+    filename = str(payload.get("file") or "file").strip()
+    requested_count = payload.get("row_count")
+
+    try:
+        loaded_count = users_service.bulk_load_users(filename)
+    except ServiceError as exc:
+        return error_response(exc.message, exc.code, exc.status, details=exc.details)
+
+    return jsonify({"file": filename, "row_count": requested_count, "loaded": loaded_count}), 201
+
+
 @users_bp.put("/<int:user_id>")
 def update_user(user_id: int):
     payload = request.get_json(silent=True) or {}
