@@ -1,8 +1,11 @@
 name: Deploy
 
 on:
-  push:
-    branches: [ main, vm-cd ]
+  workflow_run:
+      workflows: ["Tests"]
+      types:
+        - completed
+      branches: [main]
   workflow_dispatch:
 
 jobs:
