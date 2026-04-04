@@ -65,13 +65,10 @@ docker compose build
 # 2. Start core infrastructure
 docker compose up -d db redis
 
-# 3. Run migrations once
-docker compose --profile setup run --rm migrate
-
-# 4. Start scaled app fleet + load balancer
+# 3. Start scaled app fleet + load balancer
 docker compose up -d web nginx
 
-# 5. Verify
+# 4. Verify
 curl http://localhost/health
 ```
 
@@ -136,6 +133,7 @@ Target:
 ### Notes
 
 - Traffic goes through Nginx at port 80 and is distributed across two `web` replicas.
+- Migrations and seed data are applied during deployment (`scripts/deploy-vm.sh`) before the web fleet is started.
 - Redirect lookups are cached in Redis to cut repeated database reads.
 - Keep FLASK_DEBUG disabled for load testing and production-like runs.
 
