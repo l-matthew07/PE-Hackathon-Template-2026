@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 from flask import g, jsonify, redirect, request
 from flask_openapi3.models.info import Info
 from flask_openapi3.openapi import OpenAPI
-from prometheus_flask_exporter import PrometheusMetrics
 from werkzeug.exceptions import HTTPException
 
 from app.config import get_settings
@@ -33,12 +32,6 @@ def create_app():
     )
     app = OpenAPI(__name__, info=info)
     app.config["SCALAR_CONFIG"] = {"theme": "deepSpace"}
-
-    PrometheusMetrics(
-        app,
-        group_by="url_rule",
-        default_labels={"instance": os.environ.get("HOSTNAME", "unknown")},
-    )
 
     # Structured JSON logging — must be first so all subsequent logs are JSON
     setup_logging(app)
