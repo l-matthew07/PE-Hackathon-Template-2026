@@ -5,7 +5,7 @@
   "tags": ["flask", "incident-response"],
   "refresh": "10s",
   "schemaVersion": 38,
-  "version": 2,
+  "version": 3,
   "time": { "from": "now-1h", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
@@ -30,11 +30,205 @@
   },
   "panels": [
     {
+      "id": 20,
+      "type": "stat",
+      "title": "Service Health",
+      "description": "1 = UP, 0 = DOWN. Turns red immediately if Prometheus can no longer scrape the Flask app.",
+      "gridPos": { "x": 0, "y": 0, "w": 5, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "up{job=\"flask_app\"}",
+          "legendFormat": "Flask",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": { "text": "DOWN", "color": "red", "index": 0 },
+                "1": { "text": "UP", "color": "green", "index": 1 }
+              }
+            }
+          ]
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 21,
+      "type": "stat",
+      "title": "Error Rate %",
+      "description": "5xx error rate over last 5 min. Populates once Bronze wires http_requests_total.",
+      "gridPos": { "x": 5, "y": 0, "w": 5, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "job:flask_http_error_rate:rate5m * 100",
+          "legendFormat": "Error %",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2,
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          },
+          "noValue": "Awaiting data"
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "id": 22,
+      "type": "stat",
+      "title": "p95 Latency",
+      "description": "95th percentile request duration. Populates once Bronze wires http_request_duration_seconds.",
+      "gridPos": { "x": 10, "y": 0, "w": 5, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "job:flask_http_request_duration_p95:rate5m * 1000",
+          "legendFormat": "p95",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "decimals": 0,
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 200 },
+              { "color": "red", "value": 500 }
+            ]
+          },
+          "noValue": "Awaiting data"
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "id": 23,
+      "type": "stat",
+      "title": "CPU %",
+      "description": "Host CPU utilisation from node_exporter. Live now.",
+      "gridPos": { "x": 15, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[1m])) * 100)",
+          "legendFormat": "CPU",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 70 },
+              { "color": "red", "value": 90 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "id": 24,
+      "type": "stat",
+      "title": "DB Connections",
+      "description": "Live Postgres connections from postgres_exporter. Red at 20 = pool exhaustion.",
+      "gridPos": { "x": 19, "y": 0, "w": 5, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "pg_stat_activity_count{datname=\"hackathon_db\"}",
+          "legendFormat": "Connections",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 15 },
+              { "color": "red", "value": 20 }
+            ]
+          },
+          "noValue": "No data"
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value_and_name"
+      }
+    },
+    {
       "id": 1,
       "type": "timeseries",
       "title": "Latency — P50 / P95 / P99",
       "description": "Request duration percentiles. Wire: observe http_request_duration_seconds in @app.after_request.",
-      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -77,7 +271,7 @@
       "type": "timeseries",
       "title": "Traffic — Requests per Second",
       "description": "Incoming request rate by endpoint. Use the Endpoint variable above to filter.",
-      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -100,7 +294,7 @@
       "type": "stat",
       "title": "Errors — 5xx Rate",
       "description": "Fraction of requests returning 5xx. Wire: label http_requests_total with status_code.",
-      "gridPos": { "x": 0, "y": 8, "w": 8, "h": 8 },
+      "gridPos": { "x": 0, "y": 12, "w": 8, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -132,7 +326,7 @@
       "type": "gauge",
       "title": "Saturation — Active In-Flight Requests",
       "description": "Current number of requests being processed. Wire: inc/dec active_requests in before/after_request.",
-      "gridPos": { "x": 8, "y": 8, "w": 8, "h": 8 },
+      "gridPos": { "x": 8, "y": 12, "w": 8, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -166,7 +360,7 @@
       "type": "timeseries",
       "title": "URL Shortener — Redirect Hit Rate",
       "description": "Fraction of redirects that resolve (vs 404). Wire: url_shortener_redirects_total in shortener route.",
-      "gridPos": { "x": 16, "y": 8, "w": 8, "h": 8 },
+      "gridPos": { "x": 16, "y": 12, "w": 8, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -195,7 +389,7 @@
       "type": "stat",
       "title": "Saturation — DB Pool Connections",
       "description": "Active Postgres connections via app pool. Wire: db_pool_connections_active in database.py.",
-      "gridPos": { "x": 0, "y": 16, "w": 8, "h": 8 },
+      "gridPos": { "x": 0, "y": 20, "w": 8, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -227,7 +421,7 @@
       "type": "timeseries",
       "title": "Traffic — Request Rate by Status Code",
       "description": "Break down traffic by HTTP status class (2xx, 4xx, 5xx).",
-      "gridPos": { "x": 8, "y": 16, "w": 16, "h": 8 },
+      "gridPos": { "x": 8, "y": 20, "w": 16, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -249,7 +443,7 @@
       "id": 8,
       "type": "row",
       "title": "Infrastructure — Host Metrics",
-      "gridPos": { "x": 0, "y": 24, "w": 24, "h": 1 },
+      "gridPos": { "x": 0, "y": 28, "w": 24, "h": 1 },
       "collapsed": false,
       "panels": []
     },
@@ -258,7 +452,7 @@
       "type": "timeseries",
       "title": "CPU Usage %",
       "description": "Host CPU utilisation from node_exporter. Sustained > 80% is a saturation signal.",
-      "gridPos": { "x": 0, "y": 25, "w": 12, "h": 8 },
+      "gridPos": { "x": 0, "y": 29, "w": 12, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -291,7 +485,7 @@
       "type": "timeseries",
       "title": "Memory Usage %",
       "description": "Host memory utilisation. Approaching 100% may cause OOM kills.",
-      "gridPos": { "x": 12, "y": 25, "w": 12, "h": 8 },
+      "gridPos": { "x": 12, "y": 29, "w": 12, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -324,7 +518,7 @@
       "type": "timeseries",
       "title": "Disk I/O",
       "description": "Disk read/write throughput. A spike here during slow DB queries confirms I/O bottleneck.",
-      "gridPos": { "x": 0, "y": 33, "w": 12, "h": 8 },
+      "gridPos": { "x": 0, "y": 37, "w": 12, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -353,7 +547,7 @@
       "type": "timeseries",
       "title": "Network I/O",
       "description": "Network throughput in/out. Useful for diagnosing traffic spikes vs CPU-bound issues.",
-      "gridPos": { "x": 12, "y": 33, "w": 12, "h": 8 },
+      "gridPos": { "x": 12, "y": 37, "w": 12, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -381,7 +575,7 @@
       "id": 13,
       "type": "row",
       "title": "PostgreSQL",
-      "gridPos": { "x": 0, "y": 41, "w": 24, "h": 1 },
+      "gridPos": { "x": 0, "y": 45, "w": 24, "h": 1 },
       "collapsed": false,
       "panels": []
     },
@@ -390,7 +584,7 @@
       "type": "stat",
       "title": "DB — Active Connections",
       "description": "Live connections to hackathon_db from postgres_exporter. Red at 20 means pool exhaustion.",
-      "gridPos": { "x": 0, "y": 42, "w": 8, "h": 8 },
+      "gridPos": { "x": 0, "y": 46, "w": 8, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -422,7 +616,7 @@
       "type": "timeseries",
       "title": "DB — Transaction Rate",
       "description": "Committed transactions per second. A sudden drop during high traffic = DB bottleneck.",
-      "gridPos": { "x": 8, "y": 42, "w": 8, "h": 8 },
+      "gridPos": { "x": 8, "y": 46, "w": 8, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -451,7 +645,7 @@
       "type": "stat",
       "title": "DB — Deadlocks / min",
       "description": "Deadlocks are always a bug. Any non-zero value here warrants investigation.",
-      "gridPos": { "x": 16, "y": 42, "w": 8, "h": 8 },
+      "gridPos": { "x": 16, "y": 46, "w": 8, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -481,7 +675,7 @@
       "id": 17,
       "type": "row",
       "title": "SLO / Error Budget",
-      "gridPos": { "x": 0, "y": 50, "w": 24, "h": 1 },
+      "gridPos": { "x": 0, "y": 54, "w": 24, "h": 1 },
       "collapsed": false,
       "panels": []
     },
@@ -490,7 +684,7 @@
       "type": "gauge",
       "title": "Error Budget Remaining",
       "description": "SLO target: 99.5% success rate. 100% = full budget. 0% = SLO breached. Populates once Bronze metrics are wired.",
-      "gridPos": { "x": 0, "y": 51, "w": 8, "h": 8 },
+      "gridPos": { "x": 0, "y": 55, "w": 8, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
@@ -524,7 +718,7 @@
       "type": "timeseries",
       "title": "SLO Compliance Over Time",
       "description": "Tracks error budget burn rate. > 1.0 means burning faster than the SLO allows.",
-      "gridPos": { "x": 8, "y": 51, "w": 16, "h": 8 },
+      "gridPos": { "x": 8, "y": 55, "w": 16, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
