@@ -134,6 +134,10 @@ def create_app():
         )
         return response
 
+    @app.route("/test-error")
+    def test_error():
+        return "boom", 500
+
     @app.route("/health")
     def health():
         return jsonify(status="ok")

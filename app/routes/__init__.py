@@ -7,11 +7,9 @@ def register_routes(app):
     """
     from app.routes.events import events_bp
     from app.routes.metrics import metrics_bp
-    from app.routes.shortener import shortener_bp
     from app.routes.urls import urls_bp
     from app.routes.users import users_bp
 
-    app.register_api(shortener_bp)
     app.register_api(users_bp)
     app.register_api(urls_bp)
     app.register_api(events_bp)

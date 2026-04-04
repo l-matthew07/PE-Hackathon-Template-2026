@@ -1,6 +1,7 @@
 """Integration tests for the /urls CRUD endpoints."""
 
 from app.models.url import Url
+from app.routes.urls import urls_service
 
 
 class TestCreateUrl:
@@ -10,6 +11,7 @@ class TestCreateUrl:
         data = resp.get_json()
         assert data["original_url"] == "https://example.com"
         assert data["short_code"]
+        assert len(data["short_code"]) == 8
         assert data["is_active"] is True
 
     def test_create_with_custom_short_code(self, client):
@@ -36,6 +38,25 @@ class TestCreateUrl:
         assert resp.status_code == 201
         url = Url.get_or_none(Url.short_code == "dbtest")
         assert url is not None
+
+    def test_create_duplicate_original_url_without_short_code_reuses_mapping(self, client):
+        first = client.post("/urls", json={"original_url": "https://dup-url.com"})
+        second = client.post("/urls", json={"original_url": "https://dup-url.com"})
+
+        assert first.status_code == 201
+        assert second.status_code == 201
+        assert first.get_json()["short_code"] == second.get_json()["short_code"]
+        assert Url.select().where(Url.original_url == "https://dup-url.com").count() == 1
+
+    def test_create_retries_when_generated_code_already_exists(self, client, monkeypatch):
+        Url.create(original_url="https://already-used.com", short_code="cccccccc")
+
+        generated_codes = iter(["cccccccc", "dddddddd"])
+        monkeypatch.setattr(urls_service, "_generate_code", lambda: next(generated_codes))
+
+        resp = client.post("/urls", json={"original_url": "https://urls-retry.com"})
+        assert resp.status_code == 201
+        assert resp.get_json()["short_code"] == "dddddddd"
 
 
 class TestGetUrl:

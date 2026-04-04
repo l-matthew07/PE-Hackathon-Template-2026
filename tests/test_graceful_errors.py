@@ -11,24 +11,24 @@ class TestGracefulErrors:
         assert resp.status_code == 404
         assert resp.content_type.startswith("application/json")
 
-    def test_post_garbage_json_shorten(self, client):
+    def test_post_garbage_json_urls(self, client):
         resp = client.post(
-            "/shorten",
+            "/urls",
             data="{{invalid json",
             content_type="application/json",
         )
         assert resp.status_code == 422
 
     def test_post_array_instead_of_object(self, client):
-        resp = client.post("/shorten", json=[1, 2, 3])
+        resp = client.post("/urls", json=[1, 2, 3])
         assert resp.status_code == 422
 
     def test_post_null_body(self, client):
-        resp = client.post("/shorten", json=None)
+        resp = client.post("/urls", json=None)
         assert resp.status_code == 422
 
-    def test_shorten_empty_url_returns_400(self, client):
-        resp = client.post("/shorten", json={"original_url": ""})
+    def test_urls_empty_url_returns_400(self, client):
+        resp = client.post("/urls", json={"original_url": ""})
         assert resp.status_code == 400
         assert resp.content_type.startswith("application/json")
 
@@ -59,8 +59,8 @@ class TestGracefulErrors:
         assert "code" in data["error"]
         assert "message" in data["error"]
 
-    def test_shorten_validation_error_shape(self, client):
-        resp = client.post("/shorten", json={"original_url": ""})
+    def test_urls_validation_error_shape(self, client):
+        resp = client.post("/urls", json={"original_url": ""})
         data = resp.get_json()
         assert "error" in data
         assert data["error"]["code"] == "VALIDATION_ERROR"

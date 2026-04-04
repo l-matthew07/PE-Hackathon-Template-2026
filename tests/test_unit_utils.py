@@ -10,7 +10,7 @@ from app.services.errors import (
     ServiceError,
     ValidationError,
 )
-from app.services.shortener_service import ShortenerService
+from app.services.urls_service import UrlsService
 
 
 # ── format_datetime ───────────────────────────────────────────────────
@@ -82,34 +82,34 @@ class TestServiceErrors:
         assert err.details == {"fields": ["url"]}
 
 
-# ── ShortenerService._generate_code ──────────────────────────────────
+# ── UrlsService._generate_code ───────────────────────────────────────
 
 class TestGenerateCode:
     def test_default_length(self):
-        code = ShortenerService._generate_code()
-        assert len(code) == 6
+        code = UrlsService._generate_code()
+        assert len(code) == 8
         assert code.isalnum()
 
     def test_custom_length(self):
-        code = ShortenerService._generate_code(length=10)
+        code = UrlsService._generate_code(length=10)
         assert len(code) == 10
 
     def test_codes_are_unique(self):
-        codes = {ShortenerService._generate_code() for _ in range(100)}
+        codes = {UrlsService._generate_code() for _ in range(100)}
         assert len(codes) > 90  # probabilistically all unique
 
 
-# ── ShortenerService._parse_bool ─────────────────────────────────────
+# ── UrlsService._parse_bool ───────────────────────────────────────────
 
-class TestShortenerParseBool:
+class TestUrlsParseBool:
     def test_true_strings(self):
         for val in ("1", "true", "yes", "on"):
-            assert ShortenerService._parse_bool(val) is True
+            assert UrlsService._parse_bool(val) is True
 
     def test_false_strings(self):
         for val in ("0", "false", "no", "off"):
-            assert ShortenerService._parse_bool(val) is False
+            assert UrlsService._parse_bool(val) is False
 
     def test_bool_passthrough(self):
-        assert ShortenerService._parse_bool(True) is True
-        assert ShortenerService._parse_bool(False) is False
+        assert UrlsService._parse_bool(True) is True
+        assert UrlsService._parse_bool(False) is False
