@@ -1,0 +1,15 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: discord
+  group_by: [alertname, instance]
+  group_wait: 10s
+  group_interval: 1m
+  repeat_interval: 10m
+
+receivers:
+  - name: discord
+    webhook_configs:
+      - url: "http://discord-relay:9094"
+        send_resolved: true
