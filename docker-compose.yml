@@ -142,9 +142,13 @@ services:
     ports:
       - "9090:9090"
     depends_on:
-      - web
-      - node_exporter
-      - postgres_exporter
+      web:
+        condition: service_healthy
+      node_exporter:
+        condition: service_started
+      postgres_exporter:
+        condition: service_started
+    restart: unless-stopped
     networks:
       - monitoring
 
