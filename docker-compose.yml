@@ -16,7 +16,7 @@ services:
       retries: 10
     networks:
       - monitoring
-    label:
+    labels:
       autoheal-app: true
 
   redis:
@@ -33,7 +33,7 @@ services:
       retries: 10
     networks:
       - monitoring
-    label:
+    labels:
       autoheal-app: true
 
   migrate:
@@ -84,7 +84,7 @@ services:
       retries: 5
     networks:
       - monitoring
-    label:
+    labels:
       autoheal-app: true
 
   nginx:
@@ -103,7 +103,7 @@ services:
       retries: 5
     networks:
       - monitoring
-    label:
+    labels:
       autoheal-app: true
 
   node_exporter:
