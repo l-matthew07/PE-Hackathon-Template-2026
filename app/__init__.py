@@ -19,6 +19,9 @@ from app.routes import register_routes
 _logger = logging.getLogger(__name__)
 
 
+STARTUP_SCHEMA_LOCK_ID = 2 # random number to lock db on startup
+
+
 def create_app():
     load_dotenv()
     get_settings()
@@ -49,8 +52,13 @@ def create_app():
 
     db.connect(reuse_if_open=True)
     try:
-        # Keep startup resilient in environments where migrations were not run yet.
-        db.create_tables([User, Url, Event], safe=True)
+        # Prevent startup races when multiple gunicorn workers/replicas boot simultaneously.
+        db.execute_sql("SELECT pg_advisory_lock(%s)", (STARTUP_SCHEMA_LOCK_ID,))
+        try:
+            # Keep startup resilient in environments where migrations were not run yet.
+            db.create_tables([User, Url, Event], safe=True)
+        finally:
+            db.execute_sql("SELECT pg_advisory_unlock(%s)", (STARTUP_SCHEMA_LOCK_ID,))
     finally:
         if not db.is_closed():
             db.close()
