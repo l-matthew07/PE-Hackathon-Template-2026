@@ -1,0 +1,47 @@
+# Recording rules — pre-compute expensive queries so dashboard panels load instantly.
+# These rules depend on Bronze /metrics wiring. Once Bronze is done, all derived
+# metrics below auto-populate and all SLO panels come alive.
+
+groups:
+  - name: flask_golden_signals
+    interval: 30s
+    rules:
+      # Error rate: fraction of requests returning 5xx over a 5-min window
+      - record: job:flask_http_error_rate:rate5m
+        expr: |
+          sum(rate(http_requests_total{status_code=~"5.."}[5m]))
+          /
+          sum(rate(http_requests_total[5m]))
+
+      # p95 request latency
+      - record: job:flask_http_request_duration_p95:rate5m
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+          )
+
+      # p99 request latency
+      - record: job:flask_http_request_duration_p99:rate5m
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+          )
+
+      # Overall request throughput (requests per second)
+      - record: job:flask_http_request_rate:rate1m
+        expr: sum(rate(http_requests_total[1m]))
+
+  - name: flask_slo
+    interval: 60s
+    rules:
+      # SLO target: 99.5% of requests must succeed (error rate < 0.5%)
+      # Error budget remaining as a fraction (1.0 = full budget, 0.0 = exhausted)
+      - record: job:flask_error_budget_remaining:rate5m
+        expr: |
+          1 - (job:flask_http_error_rate:rate5m / 0.005)
+
+      # Burn rate — how fast we are consuming the error budget relative to normal
+      # > 1.0 means burning faster than the SLO allows
+      - record: job:flask_error_budget_burn_rate:rate1h
+        expr: |
+          job:flask_http_error_rate:rate5m / 0.005

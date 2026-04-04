@@ -5,6 +5,7 @@ from app.config import get_settings
 from app.lib.api import error_response
 from app.models.url import Url
 from app.routes.bulk import register_bulk_load_endpoint
+from app.routes.metrics import url_shortener_redirects_total
 from app.services.errors import ServiceError
 from app.services.shortener_service import ShortenerService
 
@@ -49,13 +50,16 @@ def resolve_short_url(short_code: str):
     cache_key = f"short-url:{short_code}"
     cached_url = cache_get(cache_key)
     if cached_url:
+        url_shortener_redirects_total.labels(status="hit").inc()
         return redirect(cached_url, code=302)
 
     url = Url.get_or_none((Url.short_code == short_code) & (Url.is_active == True))
     if url is None:
+        url_shortener_redirects_total.labels(status="miss").inc()
         return error_response("Short URL not found", "NOT_FOUND", 404)
 
     shortener_service.capture_click_event(url, short_code)
+    url_shortener_redirects_total.labels(status="hit").inc()
 
     cache_set(cache_key, url.original_url, ttl_seconds=3600)
     return redirect(url.original_url, code=302)
