@@ -12,7 +12,7 @@ def register_bulk_load_endpoint(
     *,
     route: str = "/bulk",
     default_file: str,
-    success_status: int = 201,
+    success_status: int = 200,
 ) -> None:
     endpoint_name = f"{blueprint.name}_bulk_load"
 
