@@ -7,6 +7,7 @@ from flask import Blueprint, jsonify, redirect, request
 from peewee import IntegrityError
 
 from app.models.url import Url
+from app.routes.metrics import url_shortener_redirects_total
 
 shortener_bp = Blueprint("shortener", __name__)
 
@@ -59,7 +60,9 @@ def shorten_url():
 def resolve_short_url(short_code: str):
     url = Url.get_or_none(Url.short_code == short_code)
     if url is None:
+        url_shortener_redirects_total.labels(status="miss").inc()
         return jsonify(error="Short URL not found"), 404
 
+    url_shortener_redirects_total.labels(status="hit").inc()
     (Url.update(visits=Url.visits + 1).where(Url.short_code == short_code)).execute()
     return redirect(url.original_url, code=302)
