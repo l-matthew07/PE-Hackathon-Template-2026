@@ -1,0 +1,80 @@
+name: Rollback To Ref
+
+on:
+  workflow_dispatch:
+    inputs:
+      rollback_ref:
+        description: "Commit SHA, tag, or branch to roll back to"
+        required: true
+        type: string
+      confirm:
+        description: "Type ROLLBACK to proceed"
+        required: true
+        type: string
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    env:
+      VM_APP_DIR: ${{ vars.VM_APP_DIR }}
+
+    steps:
+      - name: Guard confirmation
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event.inputs.confirm }}" != "ROLLBACK" ]; then
+            echo "Confirmation failed. Type exactly ROLLBACK."
+            exit 1
+          fi
+
+      - name: Roll back to requested ref and deploy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -euo pipefail
+
+            APP_DIR="${{ vars.VM_APP_DIR }}"
+            TARGET_REF="${{ github.event.inputs.rollback_ref }}"
+
+            cd "${APP_DIR}"
+
+            git fetch --all --prune --tags
+
+            if git rev-parse --verify "origin/${TARGET_REF}" >/dev/null 2>&1; then
+              RESOLVED_REF="origin/${TARGET_REF}"
+            elif git rev-parse --verify "${TARGET_REF}" >/dev/null 2>&1; then
+              RESOLVED_REF="${TARGET_REF}"
+            else
+              echo "Unable to resolve target ref: ${TARGET_REF}"
+              exit 1
+            fi
+
+            RESOLVED_SHA="$(git rev-parse "${RESOLVED_REF}")"
+            echo "Rolling back to ${RESOLVED_REF} (${RESOLVED_SHA})"
+
+            git checkout --detach "${RESOLVED_SHA}"
+
+            if [[ ! -f .env ]]; then
+              echo ".env not found in $(pwd). Create it before deployment."
+              exit 1
+            fi
+
+            docker compose pull || true
+            docker compose build --pull
+            docker compose up -d db redis
+            docker compose --profile setup run --rm migrate
+            docker compose up -d --remove-orphans
+            docker image prune -f || true
+
+            docker compose ps
+            curl -fsS http://localhost/api/health
+
+            echo "Rollback deployment completed for ${RESOLVED_SHA}"
+
+  verify:
+    needs: rollback
+    uses: ./.github/workflows/rollback-verify.yml
+    secrets: inherit
