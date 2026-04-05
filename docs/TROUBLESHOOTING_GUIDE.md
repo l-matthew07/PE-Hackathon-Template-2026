@@ -2,6 +2,10 @@
 
 Use this when something looks wrong and you need a fast answer.
 
+## General rules
+
+Try not to ssh in as much as possible. We have automated github actions for common deployment tasks and logging in /dashboard. If that doesnt work, then proceed with the below instructions.
+
 ## First 2 minutes
 
 ```bash
