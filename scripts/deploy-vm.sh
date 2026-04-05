@@ -21,6 +21,6 @@ docker compose up -d --remove-orphans
 docker image prune -f || true
 
 docker compose ps
-curl -fsS http://localhost/health
+curl -fsS http://localhost/api/health
 
 echo "Deployment completed successfully"

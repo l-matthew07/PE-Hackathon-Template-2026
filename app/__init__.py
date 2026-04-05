@@ -17,6 +17,7 @@ from app.config import get_settings
 from app.database import db, init_db
 from app.lib.api import error_response
 from app.logging_config import setup_logging
+from app.cache import cache_get, cache_set
 from app.routes import register_routes
 
 _logger = logging.getLogger(__name__)
@@ -165,5 +166,20 @@ def create_app():
     @app.route("/docs")
     def scalar_docs():
         return redirect("/openapi/scalar", code=302) # slightly cursed but works
+
+    @app.route("/<string:short_code>")
+    def resolve_short_code(short_code: str):
+        cache_key = f"short_code:{short_code}"
+        original_url = cache_get(cache_key)
+
+        if original_url is None:
+            url = Url.get_or_none((Url.short_code == short_code) & (Url.is_active == True))
+            if url is None:
+                return error_response("URL not found", "NOT_FOUND", 404)
+
+            original_url = url.original_url
+            cache_set(cache_key, original_url, ttl_seconds=settings.cache_ttl_seconds)
+
+        return redirect(original_url, code=302)
 
     return app

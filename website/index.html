@@ -475,7 +475,7 @@
         }
 
         const data = await res.json();
-        const shortUrl = `${API_BASE}/${data.short_code}`;
+        const shortUrl = `${API_PREFIX}/${data.short_code}`;
 
         resultUrl.textContent = shortUrl;
         resultEl.classList.add('show');

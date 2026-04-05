@@ -52,12 +52,14 @@ def app(_setup_db):
     """Create a minimal OpenAPI app matching production setup."""
     import uuid
 
-    from flask import g, jsonify
+    from flask import g, jsonify, redirect
     from flask_openapi3.models.info import Info
     from flask_openapi3.openapi import OpenAPI
     from werkzeug.exceptions import HTTPException
 
+    from app.cache import cache_get, cache_set
     from app.lib.api import error_response
+    from app.models.url import Url
     from app.routes.alerts import alerts_bp
     from app.routes.events import events_bp
     from app.routes.urls import urls_bp
@@ -76,6 +78,21 @@ def app(_setup_db):
     @test_app.route("/health")
     def health():
         return jsonify(status="ok")
+
+    @test_app.route("/<string:short_code>")
+    def resolve_short_code(short_code: str):
+        cache_key = f"short_code:{short_code}"
+        original_url = cache_get(cache_key)
+
+        if original_url is None:
+            url = Url.get_or_none((Url.short_code == short_code) & (Url.is_active == True))
+            if url is None:
+                return error_response("URL not found", "NOT_FOUND", 404)
+
+            original_url = url.original_url
+            cache_set(cache_key, original_url, ttl_seconds=3600)
+
+        return redirect(original_url, code=302)
 
     @test_app.errorhandler(HTTPException)
     def handle_http_error(exc):
