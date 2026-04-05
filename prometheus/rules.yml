@@ -9,27 +9,27 @@ groups:
       # Error rate: fraction of requests returning 5xx over a 5-min window
       - record: job:flask_http_error_rate:rate5m
         expr: |
-          sum(rate(http_requests_total{status_code=~"5.."}[5m]))
+          sum(rate(flask_http_request_total{status=~"5.."}[5m]))
           /
-          sum(rate(http_requests_total[5m]))
+          sum(rate(flask_http_request_total[5m]))
 
       # p95 request latency
       - record: job:flask_http_request_duration_p95:rate5m
         expr: |
           histogram_quantile(0.95,
-            sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+            sum(rate(flask_http_request_duration_seconds_bucket[5m])) by (le)
           )
 
       # p99 request latency
       - record: job:flask_http_request_duration_p99:rate5m
         expr: |
           histogram_quantile(0.99,
-            sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+            sum(rate(flask_http_request_duration_seconds_bucket[5m])) by (le)
           )
 
       # Overall request throughput (requests per second)
       - record: job:flask_http_request_rate:rate1m
-        expr: sum(rate(http_requests_total[1m]))
+        expr: sum(rate(flask_http_request_total[1m]))
 
   - name: flask_slo
     interval: 60s

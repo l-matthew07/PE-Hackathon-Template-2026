@@ -27,7 +27,7 @@
           "uid": "prometheus"
         },
         "query": {
-          "query": "label_values(http_requests_total, endpoint)",
+          "query": "label_values(flask_http_request_duration_seconds_count, url_rule)",
           "refId": "A"
         },
         "multi": true,
@@ -153,7 +153,7 @@
       "type": "stat",
       "transparent": true,
       "title": "Error Rate %",
-      "description": "5xx error rate over last 5 min. Populates once Bronze wires http_requests_total.",
+      "description": "5xx error rate over last 5 min. Populates once Bronze wires flask_http_request_total.",
       "gridPos": {
         "x": 5,
         "y": 1,
@@ -428,7 +428,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(http_request_duration_seconds_bucket[5m])) by (le)",
+          "expr": "sum(rate(flask_http_request_duration_seconds_bucket[5m])) by (le)",
           "legendFormat": "{{ le }}",
           "format": "heatmap",
           "refId": "A"
@@ -508,7 +508,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(http_requests_total{endpoint=~\"$endpoint\"}[2m])) by (endpoint)",
+          "expr": "sum(rate(flask_http_request_duration_seconds_count{url_rule=~\"$endpoint\"}[2m])) by (url_rule)",
           "legendFormat": "{{ endpoint }}",
           "refId": "A"
         }
@@ -545,7 +545,7 @@
       "type": "stat",
       "transparent": true,
       "title": "Errors \u2014 5xx Rate",
-      "description": "Fraction of requests returning 5xx. Background turns red at 5%. Populates once Bronze wires http_requests_total.",
+      "description": "Fraction of requests returning 5xx. Background turns red at 5%. Populates once Bronze wires flask_http_request_total.",
       "gridPos": {
         "x": 0,
         "y": 8,
@@ -562,7 +562,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(http_requests_total{status_code=~\"5..\"}[5m])) / sum(rate(http_requests_total[5m]))",
+          "expr": "sum(rate(flask_http_request_total{status=~\"5..\"}[5m])) / sum(rate(flask_http_request_total[5m]))",
           "legendFormat": "Error Rate",
           "refId": "A"
         }
@@ -794,7 +794,7 @@
       "type": "timeseries",
       "transparent": true,
       "title": "Traffic \u2014 Request Rate by Status Code",
-      "description": "2xx vs 4xx vs 5xx breakdown over time. Populates once Bronze wires http_requests_total.",
+      "description": "2xx vs 4xx vs 5xx breakdown over time. Populates once Bronze wires flask_http_request_total.",
       "gridPos": {
         "x": 8,
         "y": 13,
@@ -811,7 +811,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(http_requests_total[2m])) by (status_code)",
+          "expr": "sum(rate(flask_http_request_total[2m])) by (status)",
           "legendFormat": "HTTP {{ status_code }}",
           "refId": "A"
         }
@@ -1546,7 +1546,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(http_requests_total)",
+          "expr": "sum(flask_http_request_total)",
           "legendFormat": "Requests",
           "refId": "A"
         }
@@ -1602,7 +1602,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket[2m])) by (le)) * 1000",
+          "expr": "histogram_quantile(0.50, sum(rate(flask_http_request_duration_seconds_bucket[2m])) by (le)) * 1000",
           "legendFormat": "p50",
           "refId": "A"
         },
@@ -1611,7 +1611,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[2m])) by (le)) * 1000",
+          "expr": "histogram_quantile(0.95, sum(rate(flask_http_request_duration_seconds_bucket[2m])) by (le)) * 1000",
           "legendFormat": "p95",
           "refId": "B"
         },
@@ -1620,7 +1620,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[2m])) by (le)) * 1000",
+          "expr": "histogram_quantile(0.99, sum(rate(flask_http_request_duration_seconds_bucket[2m])) by (le)) * 1000",
           "legendFormat": "p99",
           "refId": "C"
         }
@@ -1715,7 +1715,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(http_requests_total) by (endpoint)",
+          "expr": "sum(flask_http_request_duration_seconds_count) by (url_rule)",
           "legendFormat": "{{ endpoint }}",
           "refId": "A"
         }
@@ -1768,7 +1768,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(http_requests_total[1m])) by (endpoint) > 0",
+          "expr": "sum(rate(flask_http_request_duration_seconds_count[1m])) by (url_rule) > 0",
           "legendFormat": "{{ endpoint }}",
           "refId": "A"
         }
@@ -1833,7 +1833,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(http_requests_total[2m])) by (endpoint)",
+          "expr": "sum(rate(flask_http_request_duration_seconds_count[2m])) by (url_rule)",
           "legendFormat": "{{endpoint}}",
           "refId": "A",
           "instant": true,
@@ -1844,7 +1844,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[2m])) by (le, endpoint)) * 1000",
+          "expr": "histogram_quantile(0.95, sum(rate(flask_http_request_duration_seconds_bucket[2m])) by (le, url_rule)) * 1000",
           "legendFormat": "{{endpoint}}",
           "refId": "B",
           "instant": true,
@@ -2043,7 +2043,7 @@
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sum(rate(http_requests_total{status_code=~\"5..\"}[1m])) / clamp_min(sum(rate(http_requests_total[1m])), 0.001) * 100",
+              "expr": "sum(rate(flask_http_request_total{status=~\"5..\"}[1m])) / clamp_min(sum(rate(flask_http_request_total[1m])), 0.001) * 100",
               "legendFormat": "Error %",
               "refId": "A"
             }
@@ -2107,7 +2107,7 @@
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sum(rate(http_requests_total[1m]))",
+              "expr": "sum(rate(flask_http_request_total[1m]))",
               "legendFormat": "Req/s",
               "refId": "A"
             },
@@ -2116,7 +2116,7 @@
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[1m])) by (le)) * 1000",
+              "expr": "histogram_quantile(0.95, sum(rate(flask_http_request_duration_seconds_bucket[1m])) by (le)) * 1000",
               "legendFormat": "p95 (ms)",
               "refId": "B"
             }
