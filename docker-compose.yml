@@ -61,6 +61,7 @@ services:
       DB_NAME: hackathon_db
       DB_USER: postgres
       DB_PASSWORD: postgres
+      AUTH_TYPE: scram-sha-256
       POOL_MODE: transaction
       MAX_CLIENT_CONN: 300
       DEFAULT_POOL_SIZE: 30
