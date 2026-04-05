@@ -1,7 +1,7 @@
 import json
 import secrets
 import string
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 import csv
 
@@ -43,7 +43,7 @@ class UrlsService:
                         short_code=candidate,
                         original_url=parsed.original_url,
                         title=parsed.title,
-                        updated_at=datetime.utcnow(),
+                        updated_at=datetime.now(UTC),
                     )
                     short_code = candidate
                     break
@@ -67,7 +67,7 @@ class UrlsService:
                     short_code=short_code,
                     original_url=parsed.original_url,
                     title=parsed.title,
-                    updated_at=datetime.utcnow(),
+                    updated_at=datetime.now(UTC),
                 )
             except IntegrityError as exc:
                 classify_url_integrity_error(exc)
@@ -79,7 +79,7 @@ class UrlsService:
                     url_id=url.id,
                     user_id=parsed.user_id,
                     event_type="created",
-                    timestamp=datetime.utcnow(),
+                    timestamp=datetime.now(UTC),
                     details=json.dumps(
                         {"short_code": url.short_code, "original_url": url.original_url}
                     ),
@@ -102,7 +102,7 @@ class UrlsService:
         if parsed.is_active is not None:
             url.is_active = parsed.is_active
 
-        url.updated_at = datetime.utcnow()
+        url.updated_at = datetime.now(UTC)
         try:
             url.save()
         except IntegrityError as exc:

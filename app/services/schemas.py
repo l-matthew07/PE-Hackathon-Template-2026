@@ -1,6 +1,6 @@
 import json
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlparse
 
@@ -301,7 +301,7 @@ def parse_event_create(payload: dict) -> EventCreatePayload:
         except ValueError:
             raise ValidationError("timestamp must be ISO-8601", details={"fields": ["timestamp"]})
     else:
-        timestamp = datetime.utcnow()
+        timestamp = datetime.now(UTC)
 
     details_raw = payload.get("details")
     details: str | None

@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from peewee import IntegrityError
 
 from app.models.event import Event
@@ -20,3 +22,27 @@ class EventsService:
         except IntegrityError as exc:
             classify_event_integrity_error(exc)
             raise
+
+    @staticmethod
+    def _parse_required_int(value: object) -> int | None:
+        if value is None:
+            return None
+        text = str(value).strip()
+        if not text:
+            return None
+        try:
+            return int(text)
+        except ValueError:
+            return None
+
+    @staticmethod
+    def _parse_timestamp(value: object) -> datetime | None:
+        if value is None:
+            return None
+        text = str(value).strip()
+        if not text:
+            return None
+        try:
+            return datetime.fromisoformat(text.replace("Z", "+00:00"))
+        except ValueError:
+            return None

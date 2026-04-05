@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from peewee import AutoField, CharField, DateTimeField
 
@@ -9,4 +9,4 @@ class User(BaseModel):
     id = AutoField()
     username = CharField(unique=True)
     email = CharField()
-    created_at = DateTimeField(default=datetime.utcnow)
+    created_at = DateTimeField(default=lambda: datetime.now(UTC))
