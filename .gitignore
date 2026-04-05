@@ -35,3 +35,5 @@ judging/
 
 db-data
 .coverage
+certbot
+certs
