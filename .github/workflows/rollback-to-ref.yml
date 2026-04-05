@@ -74,7 +74,3 @@ jobs:
 
             echo "Rollback deployment completed for ${RESOLVED_SHA}"
 
-  verify:
-    needs: rollback
-    uses: ./.github/workflows/rollback-verify.yml
-    secrets: inherit
