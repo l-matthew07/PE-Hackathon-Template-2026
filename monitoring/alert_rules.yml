@@ -19,11 +19,11 @@ groups:
         expr: >
           (
             sum by (instance) (
-              rate(http_requests_total{job="flask_app", status_code=~"5.."}[2m])
+              rate(flask_http_request_total{job="flask_app", status=~"5.."}[2m])
             )
             /
             sum by (instance) (
-              rate(http_requests_total{job="flask_app"}[2m])
+              rate(flask_http_request_total{job="flask_app"}[2m])
             )
           ) > 0.05
         for: 2m
