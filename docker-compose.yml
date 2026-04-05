@@ -71,12 +71,13 @@ services:
       DATABASE_PORT: 5432
       DATABASE_USER: postgres
       DATABASE_PASSWORD: postgres
+      DATABASE_POOL_MAX_CONNECTIONS: 10
       APP_BASE_URL: http://localhost
       REDIS_URL: redis://redis:6379/0
     expose:
       - "5000"
     deploy:
-      replicas: 2
+      replicas: 3
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:5000/health" ]
       interval: 10s

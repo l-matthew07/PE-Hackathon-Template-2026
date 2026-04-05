@@ -2,15 +2,16 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 
 const BASE_URL = (__ENV.BASE_URL || 'http://localhost').replace(/\/+$/, '');
+const VUS = Number(__ENV.VUS || 50);
+const DURATION = __ENV.DURATION || '2m';
 const THINK_TIME_SECONDS = 0.05;
-const CREATE_RATIO = 0.2;
-const LIST_RATIO = 0.25;
-const ID_WINDOW_SIZE = 200;
-const HEALTHCHECK_EVERY = 25;
+const SHORTEN_RATIO = Math.min(Math.max(Number(__ENV.SHORTEN_RATIO || 0.2), 0), 1);
+const SHORT_CODE_WINDOW_SIZE = 300;
+const REDIRECT_STATUS_CODES = new Set([301, 302, 307, 308]);
 
 export const options = {
-  vus: 50,
-  duration: '2m',
+  vus: VUS,
+  duration: DURATION,
   thresholds: {
     http_req_failed: ['rate<0.05'],
     http_req_duration: ['p(95)<3000'],
@@ -19,54 +20,37 @@ export const options = {
 };
 
 const vuState = {
-  createdIds: [],
+  shortTargets: [],
 };
 
-function rememberUrlId(id) {
-  vuState.createdIds.push(id);
-  if (vuState.createdIds.length > ID_WINDOW_SIZE) {
-    vuState.createdIds.shift();
+function rememberShortTarget(target) {
+  vuState.shortTargets.push(target);
+  if (vuState.shortTargets.length > SHORT_CODE_WINDOW_SIZE) {
+    vuState.shortTargets.shift();
   }
 }
 
-function randomExistingId() {
-  if (vuState.createdIds.length === 0) {
+function randomExistingTarget() {
+  if (vuState.shortTargets.length === 0) {
     return null;
   }
-  const index = Math.floor(Math.random() * vuState.createdIds.length);
-  return vuState.createdIds[index];
+  const index = Math.floor(Math.random() * vuState.shortTargets.length);
+  return vuState.shortTargets[index];
 }
 
-function makeCreatePayload() {
+function makeShortenPayload() {
   const suffix = `${Date.now()}-${__VU}-${__ITER}-${Math.floor(Math.random() * 100000)}`;
   return {
-    original_url: `https://example.com/quest/${suffix}`,
+    original_url: `https://example.com/shortener/${suffix}`,
     title: `k6-${suffix}`,
   };
 }
 
-function healthCheck() {
-  const response = http.get(`${BASE_URL}/health`, {
-    tags: { endpoint: '/health', operation: 'health' },
-  });
-
-  check(response, {
-    'health status is 200': (r) => r.status === 200,
-    'health payload is ok': (r) => {
-      try {
-        return JSON.parse(r.body).status === 'ok';
-      } catch (_) {
-        return false;
-      }
-    },
-  });
-}
-
-function createUrl() {
-  const payload = makeCreatePayload();
+function shortenUrl() {
+  const payload = makeShortenPayload();
   const response = http.post(`${BASE_URL}/urls`, JSON.stringify(payload), {
     headers: { 'Content-Type': 'application/json' },
-    tags: { endpoint: '/urls', operation: 'create' },
+    tags: { endpoint: '/urls', operation: 'shorten' },
   });
 
   let body;
@@ -77,100 +61,96 @@ function createUrl() {
   }
 
   const passed = check(response, {
-    'create status is 201': (r) => r.status === 201,
-    'create response has id': () => body && Number.isInteger(body.id),
-    'create response has short_code': () => body && typeof body.short_code === 'string',
+    'shorten status is 201': (r) => r.status === 201,
+    'shorten response has short_code': () => body && typeof body.short_code === 'string' && body.short_code.length > 0,
+    'shorten response has original_url': () => body && typeof body.original_url === 'string',
   });
 
-  if (passed && body && Number.isInteger(body.id)) {
-    rememberUrlId(body.id);
+  if (!passed || !body) {
+    return;
   }
+
+  const shortPath = `/${body.short_code}`;
+  const shortUrl = typeof body.short_url === 'string' && body.short_url.length > 0
+    ? body.short_url
+    : `${BASE_URL}${shortPath}`;
+
+  rememberShortTarget({
+    short_code: body.short_code,
+    short_url: shortUrl,
+    short_path: shortPath,
+  });
 }
 
-function listUrls() {
-  const response = http.get(`${BASE_URL}/urls?page=1&per_page=20`, {
-    tags: { endpoint: '/urls', operation: 'list' },
-  });
-
-  let body;
-  try {
-    body = response.json();
-  } catch (_) {
-    body = null;
+function resolveShortUrl() {
+  const target = randomExistingTarget();
+  if (!target) {
+    shortenUrl();
+    return;
   }
+
+  const resolveUrl = target.short_url.startsWith('http')
+    ? target.short_url
+    : `${BASE_URL}${target.short_path}`;
+
+  const response = http.get(resolveUrl, {
+    redirects: 0,
+    tags: { endpoint: '/:short_code', operation: 'resolve' },
+  });
 
   check(response, {
-    'list status is 200': (r) => r.status === 200,
-    'list response has data array': () => body && Array.isArray(body.data),
-  });
-
-  if (body && Array.isArray(body.data)) {
-    for (const url of body.data) {
-      if (url && Number.isInteger(url.id)) {
-        rememberUrlId(url.id);
-      }
-    }
-  }
-}
-
-function getUrlById(urlId) {
-  const response = http.get(`${BASE_URL}/urls/${urlId}`, {
-    tags: { endpoint: '/urls/:id', operation: 'get' },
-  });
-
-  let body;
-  try {
-    body = response.json();
-  } catch (_) {
-    body = null;
-  }
-
-  check(response, {
-    'get status is 200': (r) => r.status === 200,
-    'get response id matches': () => body && body.id === urlId,
-    'get response has original_url': () => body && typeof body.original_url === 'string',
+    'resolve status is redirect': (r) => REDIRECT_STATUS_CODES.has(r.status),
+    'resolve has location header': (r) => !!r.headers.Location,
   });
 }
 
 export function setup() {
-  const response = http.get(`${BASE_URL}/health`, {
-    tags: { endpoint: '/health', operation: 'setup' },
+  const payload = {
+    original_url: 'https://example.com/k6/setup',
+    title: 'k6-setup',
+  };
+  const response = http.post(`${BASE_URL}/urls`, JSON.stringify(payload), {
+    headers: { 'Content-Type': 'application/json' },
+    tags: { endpoint: '/urls', operation: 'setup' },
   });
 
-  const healthy = check(response, {
-    'setup health status is 200': (r) => r.status === 200,
-  });
-
-  if (!healthy) {
-    throw new Error(`Target is not healthy at ${BASE_URL}/health`);
+  let body;
+  try {
+    body = response.json();
+  } catch (_) {
+    body = null;
   }
+
+  const ready = check(response, {
+    'setup shorten status is 201': (r) => r.status === 201,
+    'setup shorten response has short_code': () => body && typeof body.short_code === 'string' && body.short_code.length > 0,
+  });
+
+  if (!ready || !body) {
+    throw new Error(`Target did not create short URL at ${BASE_URL}/urls`);
+  }
+
+  return {
+    short_code: body.short_code,
+    short_url: body.short_url || `${BASE_URL}/${body.short_code}`,
+    short_path: `/${body.short_code}`,
+  };
 }
 
-export default function () {
-  if (__ITER % HEALTHCHECK_EVERY === 0) {
-    healthCheck();
+export default function (setupData) {
+  if (setupData && vuState.shortTargets.length === 0) {
+    rememberShortTarget(setupData);
   }
 
   const draw = Math.random();
 
-  if (draw < CREATE_RATIO) {
-    createUrl();
+  if (draw < SHORTEN_RATIO) {
+    shortenUrl();
     sleep(THINK_TIME_SECONDS);
     return;
   }
 
-  if (draw < CREATE_RATIO + LIST_RATIO) {
-    listUrls();
-    sleep(THINK_TIME_SECONDS);
-    return;
-  }
-
-  const existingId = randomExistingId();
-  if (existingId === null) {
-    createUrl();
-  } else {
-    getUrlById(existingId);
-  }
+  resolveShortUrl();
 
   sleep(THINK_TIME_SECONDS);
 }
