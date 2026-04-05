@@ -52,21 +52,20 @@ def _get(path: str) -> int | None:
 
 def high_error_rate() -> None:
     """
-    Sends 200 requests with invalid URLs to /shorten.
-    The shortener validates URLs, so each request returns a 4xx/5xx.
+    Sends 200 GET requests to /test-error which returns HTTP 500.
     Watch: panel 3 (Errors — 5xx Rate) background turns red.
     Diagnosis path: error rate panel → endpoint filter → logs for traceback.
     """
-    print("[chaos] Starting high_error_rate — sending 200 invalid /shorten requests")
+    print("[chaos] Starting high_error_rate — sending 200 requests to /test-error (HTTP 500)")
     print("[chaos] Watch: Grafana panel 3 (Errors — 5xx Rate)")
     errors = 0
     for i in range(200):
-        status = _post("/shorten", {"url": "not-a-valid-url"})
-        if status and status >= 400:
+        status = _get("/test-error")
+        if status and status >= 500:
             errors += 1
         time.sleep(0.05)
-    print(f"[chaos] Done. {errors}/200 requests returned error status.")
-    print("[chaos] In Grafana, filter panel 2 by endpoint='/shorten' to confirm source.")
+    print(f"[chaos] Done. {errors}/200 requests returned 5xx status.")
+    print("[chaos] In Grafana, filter panel 2 by endpoint='test_error' to confirm source.")
 
 
 def traffic_spike() -> None:
