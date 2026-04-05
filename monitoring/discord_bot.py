@@ -206,25 +206,16 @@ def silence_alert(alert_key: str, created_by: str) -> None:
 
 
 def expire_silence(silence_id: str) -> None:
-    """Immediately expire a silence by setting its endsAt to now."""
+    """Delete a silence by ID."""
     try:
-        # Fetch the silence first
-        req = urllib.request.Request(f"{ALERTMANAGER_URL}/api/v2/silence/{silence_id}")
-        with urllib.request.urlopen(req) as resp:
-            silence = json.loads(resp.read())
-        # Set endsAt to now to expire it
-        now = datetime.now(timezone.utc)
-        silence["endsAt"] = now.strftime("%Y-%m-%dT%H:%M:%S.000Z")
         req = urllib.request.Request(
-            f"{ALERTMANAGER_URL}/api/v2/silences",
-            data=json.dumps(silence).encode(),
-            headers={"Content-Type": "application/json"},
-            method="POST",
+            f"{ALERTMANAGER_URL}/api/v2/silence/{silence_id}",
+            method="DELETE",
         )
         with urllib.request.urlopen(req) as resp:
-            print(f"Silence {silence_id} expired: {resp.status}", flush=True)
+            print(f"Silence {silence_id} deleted: {resp.status}", flush=True)
     except Exception as e:
-        print(f"Failed to expire silence {silence_id}: {e}", flush=True)
+        print(f"Failed to delete silence {silence_id}: {e}", flush=True)
 
 
 def get_member_tier(member: discord.Member | None) -> int | None:
