@@ -39,13 +39,22 @@ Verify: `curl http://localhost/health` → `{"status": "ok"}`
 
 ---
 
-## Usage
+## API Usage
 
 1. **Shorten a URL** — `POST /shorten` with `{"url": "https://example.com/..."}`
 2. **Redirect** — `GET /<short_code>`
 3. **Dashboard** — http://localhost/admin/
 4. **API docs** — http://localhost/docs
 5. **Chaos demo** — `uv run scripts/chaos.py high_error_rate`
+
+---
+
+## Hosting config
+
+- API is hosted on /api
+- Grafana on /dashboard
+- Prometheus on /prometheus
+- Landing on /
 
 ---
 
