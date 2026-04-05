@@ -79,45 +79,6 @@ curl http://localhost/health
 curl http://localhost/openapi/openapi.json
 ```
 
-## HTTPS with Certbot (Nginx)
-
-The Docker setup now supports TLS termination at Nginx on port 443.
-
-1. Set values in `.env`:
-
-```bash
-CERTBOT_EMAIL=you@example.com
-CERTBOT_DOMAIN=your-domain.example.com
-```
-
-2. Start the app and edge services:
-
-```bash
-docker compose up -d db redis web nginx
-```
-
-3. Issue the initial certificate:
-
-```bash
-docker compose --profile setup run --rm certbot-init
-```
-
-4. Reload Nginx so it starts serving the Let's Encrypt cert:
-
-```bash
-docker compose exec nginx nginx -s reload
-```
-
-5. Start the renewal loop:
-
-```bash
-docker compose up -d certbot
-```
-
-Notes:
-- HTTP traffic is redirected to HTTPS, except `/.well-known/acme-challenge/` for ACME validation.
-- On first boot, Nginx generates a temporary self-signed certificate so the container can start before the real cert exists.
-
 ## VM Deployment Script (Reusable Locally)
 
 The repository includes a reusable deployment script at [scripts/deploy-vm.sh](scripts/deploy-vm.sh).
