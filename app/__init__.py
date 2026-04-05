@@ -8,6 +8,8 @@ from flask import g, jsonify, redirect, request
 from flask_openapi3.models.info import Info
 from flask_openapi3.openapi import OpenAPI
 from prometheus_flask_exporter import PrometheusMetrics
+from redis import Redis
+from redis.exceptions import RedisError
 from werkzeug.exceptions import HTTPException
 
 from flask_limiter import Limiter
@@ -24,6 +26,20 @@ _logger = logging.getLogger(__name__)
 
 
 STARTUP_SCHEMA_LOCK_ID = 2 # random number to lock db on startup
+
+
+def _resolve_limiter_storage_uri(redis_url: str) -> str:
+    """Prefer Redis for distributed limiting, but degrade gracefully when unavailable."""
+    try:
+        client = Redis.from_url(redis_url, socket_connect_timeout=1, socket_timeout=1)
+        client.ping()
+        return redis_url
+    except (RedisError, OSError, ValueError) as exc:
+        _logger.warning(
+            "Redis unavailable for rate limiting; falling back to in-memory storage: %s",
+            exc,
+        )
+        return "memory://"
 
 
 def create_app():
@@ -48,11 +64,12 @@ def create_app():
     )
 
     settings = get_settings()
+    limiter_storage_uri = _resolve_limiter_storage_uri(settings.redis_url)
     limiter = Limiter(
         get_remote_address,
         app=app,
         default_limits=["200 per minute"],
-        storage_uri=settings.redis_url,
+        storage_uri=limiter_storage_uri,
     )
     app.limiter = limiter
 
