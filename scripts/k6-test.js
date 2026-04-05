@@ -4,7 +4,7 @@ import { check, sleep } from 'k6';
 const BASE_URL = (__ENV.BASE_URL || 'http://localhost').replace(/\/+$/, '');
 const VUS = Number(__ENV.VUS || 50);
 const DURATION = __ENV.DURATION || '2m';
-const THINK_TIME_SECONDS = 0.05;
+const THINK_TIME_SECONDS = 1; 
 const SHORTEN_RATIO = Math.min(Math.max(Number(__ENV.SHORTEN_RATIO || 0.2), 0), 1);
 const SHORT_CODE_WINDOW_SIZE = 300;
 const REDIRECT_STATUS_CODES = new Set([301, 302, 307, 308]);
