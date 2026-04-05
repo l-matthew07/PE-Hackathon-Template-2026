@@ -1913,7 +1913,12 @@
       "id": 60,
       "type": "row",
       "title": "Logs",
-      "gridPos": { "x": 0, "y": 33, "w": 24, "h": 1 },
+      "gridPos": {
+        "x": 0,
+        "y": 33,
+        "w": 24,
+        "h": 1
+      },
       "collapsed": true,
       "panels": [
         {
@@ -1921,11 +1926,22 @@
           "type": "logs",
           "title": "Application Logs",
           "description": "Live structured log stream from Loki. Color-coded by level.",
-          "gridPos": { "x": 0, "y": 0, "w": 24, "h": 12 },
-          "datasource": { "type": "loki", "uid": "loki" },
+          "gridPos": {
+            "x": 0,
+            "y": 0,
+            "w": 24,
+            "h": 12
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
           "targets": [
             {
-              "datasource": { "type": "loki", "uid": "loki" },
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              },
               "expr": "{job=\"docker\"} |= ``",
               "refId": "A"
             }
@@ -1947,7 +1963,12 @@
       "id": 70,
       "type": "row",
       "title": "Simulate",
-      "gridPos": { "x": 0, "y": 34, "w": 24, "h": 1 },
+      "gridPos": {
+        "x": 0,
+        "y": 34,
+        "w": 24,
+        "h": 1
+      },
       "collapsed": true,
       "panels": [
         {
@@ -1955,23 +1976,42 @@
           "type": "text",
           "title": "Error & Load Simulation",
           "description": "Generate errors, traffic spikes, and concurrent user load against the running app. Watch the panels above react in real time.",
-          "gridPos": { "x": 0, "y": 1, "w": 12, "h": 12 },
-          "datasource": { "type": "datasource", "uid": "grafana" },
+          "gridPos": {
+            "x": 0,
+            "y": 1,
+            "w": 12,
+            "h": 12
+          },
+          "datasource": {
+            "type": "datasource",
+            "uid": "grafana"
+          },
           "options": {
             "mode": "html",
-            "content": "<style>\n  .sim-wrap { font-family: 'Share Tech Mono', monospace; overflow-y: auto; max-height: 520px; }\n  .sim-card { background: rgba(0,188,212,0.06); border: 1px solid rgba(0,188,212,0.25); border-radius: 10px; padding: 14px; margin-bottom: 10px; }\n  .sim-card h4 { margin: 0 0 4px; font-size: 13px; color: #00e5ff; letter-spacing: 0.05em; }\n  .sim-card p { margin: 0 0 8px; font-size: 11px; color: #888; }\n  .sim-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }\n  .sim-btn { background: #00bcd4; color: #000; border: none; border-radius: 6px; padding: 6px 14px; font-size: 11px; font-weight: 700; cursor: pointer; }\n  .sim-btn:hover { background: #00e5ff; }\n  .sim-btn.red { background: #e53935; color: #fff; }\n  .sim-btn.red:hover { background: #ff5252; }\n  .sim-btn.amber { background: #ff9800; color: #000; }\n  .sim-btn.amber:hover { background: #ffb74d; }\n  .sim-btn:disabled { opacity: 0.4; cursor: not-allowed; }\n  .sim-slider { width: 120px; accent-color: #00bcd4; }\n  .sim-label { font-size: 11px; color: #aaa; min-width: 80px; }\n  .sim-val { font-size: 11px; color: #00e5ff; min-width: 30px; text-align: right; }\n  .sim-input { background:#111; border:1px solid #333; color:#eee; padding:4px 8px; border-radius:4px; font-size:11px; font-family:'Share Tech Mono',monospace; }\n  .sim-log { background: #0a0a0a; border: 1px solid #222; border-radius: 8px; padding: 10px; margin-top: 10px; max-height: 180px; overflow-y: auto; font-size: 11px; color: #ccc; }\n  .sim-log .entry { padding: 3px 0; border-bottom: 1px solid #1a1a1a; }\n  .sim-log .ts { color: #555; margin-right: 6px; }\n  .sim-log .ok { color: #00e5ff; }\n  .sim-log .err { color: #e53935; }\n  .sim-log .warn { color: #ff9800; }\n</style>\n<div class=\"sim-wrap\" id=\"sim-root\">\n\n  <div class=\"sim-card\">\n    <h4>TRIGGER ERROR</h4>\n    <p>Hit /test-error once to generate a 500 response</p>\n    <button class=\"sim-btn red\" id=\"btn-err\">Fire 500</button>\n  </div>\n\n  <div class=\"sim-card\">\n    <h4>ERROR BURST</h4>\n    <p>Fire N requests to /test-error to spike the error rate metric</p>\n    <div class=\"sim-row\">\n      <span class=\"sim-label\">Count</span>\n      <input type=\"range\" class=\"sim-slider\" min=\"5\" max=\"200\" value=\"20\" id=\"sl-burst\">\n      <span class=\"sim-val\" id=\"sv-burst\">20</span>\n    </div>\n    <button class=\"sim-btn red\" id=\"btn-burst\">Fire Burst</button>\n  </div>\n\n  <div class=\"sim-card\">\n    <h4>TRAFFIC SPIKE</h4>\n    <p>Instant burst of concurrent GET /health requests</p>\n    <div class=\"sim-row\">\n      <span class=\"sim-label\">Requests</span>\n      <input type=\"range\" class=\"sim-slider\" min=\"10\" max=\"500\" value=\"50\" id=\"sl-spike\">\n      <span class=\"sim-val\" id=\"sv-spike\">50</span>\n    </div>\n    <button class=\"sim-btn amber\" id=\"btn-spike\">Spike</button>\n  </div>\n\n  <div class=\"sim-card\">\n    <h4>CONCURRENT USERS</h4>\n    <p>Simulate N users hitting random endpoints for a set duration</p>\n    <div class=\"sim-row\">\n      <span class=\"sim-label\">Users</span>\n      <input type=\"range\" class=\"sim-slider\" min=\"1\" max=\"200\" value=\"10\" id=\"sl-users\">\n      <span class=\"sim-val\" id=\"sv-users\">10</span>\n    </div>\n    <div class=\"sim-row\">\n      <span class=\"sim-label\">Duration (s)</span>\n      <input type=\"range\" class=\"sim-slider\" min=\"1\" max=\"30\" value=\"5\" id=\"sl-dur\">\n      <span class=\"sim-val\" id=\"sv-dur\">5</span>\n    </div>\n    <button class=\"sim-btn\" id=\"btn-load\">Start Load</button>\n  </div>\n\n  <div class=\"sim-card\">\n    <h4>FIRE ALERT</h4>\n    <p>Create an alert record in the Flask app database</p>\n    <div class=\"sim-row\">\n      <input placeholder=\"Alert name\" class=\"sim-input\" style=\"width:140px\" id=\"in-aname\">\n      <select class=\"sim-input\" id=\"in-asev\"><option value=\"warning\">warning</option><option value=\"critical\">critical</option></select>\n      <input placeholder=\"Summary (optional)\" class=\"sim-input\" style=\"width:200px\" id=\"in-asum\">\n    </div>\n    <button class=\"sim-btn red\" id=\"btn-alert\">Fire Alert</button>\n  </div>\n\n  <div class=\"sim-card\">\n    <h4>SLOW ENDPOINT</h4>\n    <p>Hit an endpoint that sleeps server-side to spike p95 latency</p>\n    <div class=\"sim-row\">\n      <span class=\"sim-label\">Delay (s)</span>\n      <input type=\"range\" class=\"sim-slider\" min=\"1\" max=\"10\" value=\"3\" id=\"sl-slow\">\n      <span class=\"sim-val\" id=\"sv-slow\">3</span>\n    </div>\n    <div class=\"sim-row\">\n      <span class=\"sim-label\">Requests</span>\n      <input type=\"range\" class=\"sim-slider\" min=\"1\" max=\"50\" value=\"5\" id=\"sl-slow-n\">\n      <span class=\"sim-val\" id=\"sv-slow-n\">5</span>\n    </div>\n    <button class=\"sim-btn amber\" id=\"btn-slow\">Send Slow Requests</button>\n  </div>\n\n  <div class=\"sim-log\" id=\"sim-log\">\n    <div class=\"entry\"><span class=\"ts\">--:--:--</span><span class=\"ok\">Simulation panel ready</span></div>\n  </div>\n</div>\n\n<script>\n(function() {\n  var BASE = window.location.origin;\n  var logData = [];\n  var logEl = document.getElementById('sim-log');\n\n  function addLog(msg, cls) {\n    var ts = new Date().toLocaleTimeString();\n    logData.unshift({ts: ts, msg: msg, cls: cls || 'ok'});\n    if (logData.length > 50) logData.length = 50;\n    logEl.innerHTML = logData.map(function(e) {\n      return '<div class=\"entry\"><span class=\"ts\">' + e.ts + '</span><span class=\"' + e.cls + '\">' + e.msg + '</span></div>';\n    }).join('');\n  }\n\n  // Slider bindings\n  function bindSlider(sliderId, valId) {\n    var sl = document.getElementById(sliderId);\n    var sv = document.getElementById(valId);\n    if (sl && sv) sl.oninput = function() { sv.textContent = sl.value; };\n  }\n  bindSlider('sl-burst', 'sv-burst');\n  bindSlider('sl-spike', 'sv-spike');\n  bindSlider('sl-users', 'sv-users');\n  bindSlider('sl-dur', 'sv-dur');\n  bindSlider('sl-slow', 'sv-slow');\n  bindSlider('sl-slow-n', 'sv-slow-n');\n\n  // Trigger Error\n  document.getElementById('btn-err').onclick = function() {\n    var btn = this; btn.disabled = true;\n    fetch(BASE + '/test-error').then(function(r) {\n      addLog('/test-error → ' + r.status, r.status >= 500 ? 'err' : 'ok');\n      btn.disabled = false;\n    }).catch(function(e) { addLog('Error: ' + e.message, 'err'); btn.disabled = false; });\n  };\n\n  // Error Burst\n  document.getElementById('btn-burst').onclick = function() {\n    var btn = this; btn.disabled = true; btn.textContent = 'Firing...';\n    var count = parseInt(document.getElementById('sl-burst').value);\n    var ok = 0, fail = 0, done = 0;\n    for (var i = 0; i < count; i++) {\n      fetch(BASE + '/test-error').then(function(r) {\n        if (r.status >= 500) fail++; else ok++;\n        done++;\n        if (done >= count) {\n          addLog('Burst: ' + fail + ' errors / ' + (fail+ok) + ' total', fail > 0 ? 'err' : 'ok');\n          btn.disabled = false; btn.textContent = 'Fire Burst';\n        }\n      }).catch(function() { fail++; done++;\n        if (done >= count) {\n          addLog('Burst: ' + fail + ' errors / ' + (fail+ok) + ' total', 'err');\n          btn.disabled = false; btn.textContent = 'Fire Burst';\n        }\n      });\n    }\n  };\n\n  // Traffic Spike\n  document.getElementById('btn-spike').onclick = function() {\n    var btn = this; btn.disabled = true; btn.textContent = 'Spiking...';\n    var count = parseInt(document.getElementById('sl-spike').value);\n    var t0 = Date.now(), done = 0, oks = 0;\n    for (var i = 0; i < count; i++) {\n      fetch(BASE + '/health').then(function(r) {\n        if (r.status === 200) oks++;\n        done++;\n        if (done >= count) {\n          var ms = Date.now() - t0;\n          addLog('Spike: ' + oks + '/' + count + ' ok in ' + ms + 'ms (' + Math.round(count/(ms/1000)) + ' rps)', 'ok');\n          btn.disabled = false; btn.textContent = 'Spike';\n        }\n      }).catch(function() { done++;\n        if (done >= count) {\n          var ms = Date.now() - t0;\n          addLog('Spike: ' + oks + '/' + count + ' ok in ' + ms + 'ms', 'warn');\n          btn.disabled = false; btn.textContent = 'Spike';\n        }\n      });\n    }\n  };\n\n  // Concurrent Users\n  document.getElementById('btn-load').onclick = function() {\n    var btn = this;\n    var users = parseInt(document.getElementById('sl-users').value);\n    var dur = parseInt(document.getElementById('sl-dur').value) * 1000;\n    btn.disabled = true; btn.textContent = 'Running ' + (dur/1000) + 's...';\n    var endpoints = ['/health', '/users?per_page=5', '/urls?per_page=5', '/events?per_page=5'];\n    var end = Date.now() + dur;\n    var total = 0, errs = 0, lats = [], active = users;\n\n    function userLoop() {\n      if (Date.now() >= end) {\n        active--;\n        if (active <= 0) finish();\n        return;\n      }\n      var ep = endpoints[Math.floor(Math.random() * endpoints.length)];\n      var t0 = Date.now();\n      fetch(BASE + ep).then(function(r) {\n        lats.push(Date.now() - t0); total++;\n        if (r.status >= 500) errs++;\n        userLoop();\n      }).catch(function() { errs++; total++; userLoop(); });\n    }\n    function finish() {\n      lats.sort(function(a,b){return a-b;});\n      var p50 = lats[Math.floor(lats.length*0.5)]||0;\n      var p95 = lats[Math.floor(lats.length*0.95)]||0;\n      var rps = (total/(dur/1000)).toFixed(0);\n      var errPct = total ? ((errs/total)*100).toFixed(1) : '0';\n      addLog('Load: ' + users + ' users, ' + total + ' reqs, ' + rps + ' rps, p50=' + p50 + 'ms p95=' + p95 + 'ms, err=' + errPct + '%', errs > 0 ? 'warn' : 'ok');\n      btn.disabled = false; btn.textContent = 'Start Load';\n    }\n    for (var u = 0; u < users; u++) userLoop();\n  };\n\n  // Fire Alert\n  document.getElementById('btn-alert').onclick = function() {\n    var btn = this;\n    var name = document.getElementById('in-aname').value.trim();\n    if (!name) { addLog('Alert name required', 'err'); return; }\n    var sev = document.getElementById('in-asev').value;\n    var sum = document.getElementById('in-asum').value.trim();\n    btn.disabled = true;\n    fetch(BASE + '/alerts', {\n      method: 'POST',\n      headers: {'Content-Type': 'application/json'},\n      body: JSON.stringify({alert_name: name, severity: sev, summary: sum || undefined, source: 'grafana-simulate'})\n    }).then(function(r) { return r.json(); }).then(function(d) {\n      addLog('Alert fired: ' + name + ' (' + sev + ') id=' + (d.id || '?'), 'ok');\n      document.getElementById('in-aname').value = '';\n      document.getElementById('in-asum').value = '';\n      btn.disabled = false;\n    }).catch(function(e) { addLog('Alert error: ' + e.message, 'err'); btn.disabled = false; });\n  };\n\n  // Slow Endpoint\n  document.getElementById('btn-slow').onclick = function() {\n    var btn = this; btn.disabled = true; btn.textContent = 'Sending...';\n    var delay = parseInt(document.getElementById('sl-slow').value);\n    var n = parseInt(document.getElementById('sl-slow-n').value);\n    var done = 0, ok = 0;\n    for (var i = 0; i < n; i++) {\n      fetch(BASE + '/test-slow?delay=' + delay).then(function(r) {\n        if (r.status < 500) ok++;\n        done++;\n        if (done >= n) {\n          addLog('Slow: ' + ok + '/' + n + ' completed (' + delay + 's delay each)', 'warn');\n          btn.disabled = false; btn.textContent = 'Send Slow Requests';\n        }\n      }).catch(function() { done++;\n        if (done >= n) {\n          addLog('Slow: ' + ok + '/' + n + ' completed (' + delay + 's delay each)', 'err');\n          btn.disabled = false; btn.textContent = 'Send Slow Requests';\n        }\n      });\n    }\n  };\n\n  addLog('Simulation panel initialized', 'ok');\n})();\n</script>"
+            "content": "<iframe srcdoc=\"<!DOCTYPE html>\n<html><head><style>\n* { box-sizing: border-box; margin: 0; padding: 0; }\nbody { font-family: 'Share Tech Mono', monospace; background: transparent; color: #ccc; overflow-y: auto; padding: 8px; }\n.sim-card { background: rgba(0,188,212,0.06); border: 1px solid rgba(0,188,212,0.25); border-radius: 10px; padding: 14px; margin-bottom: 10px; }\n.sim-card h4 { margin: 0 0 4px; font-size: 13px; color: #00e5ff; letter-spacing: 0.05em; }\n.sim-card p { margin: 0 0 8px; font-size: 11px; color: #888; }\n.sim-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }\n.sim-btn { background: #00bcd4; color: #000; border: none; border-radius: 6px; padding: 6px 14px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; }\n.sim-btn:hover { background: #00e5ff; }\n.sim-btn.red { background: #e53935; color: #fff; }\n.sim-btn.red:hover { background: #ff5252; }\n.sim-btn.amber { background: #ff9800; color: #000; }\n.sim-btn.amber:hover { background: #ffb74d; }\n.sim-btn:disabled { opacity: 0.4; cursor: not-allowed; }\n.sim-slider { width: 120px; accent-color: #00bcd4; }\n.sim-label { font-size: 11px; color: #aaa; min-width: 80px; }\n.sim-val { font-size: 11px; color: #00e5ff; min-width: 30px; text-align: right; }\n.sim-input { background:#111; border:1px solid #333; color:#eee; padding:4px 8px; border-radius:4px; font-size:11px; font-family:inherit; }\n.sim-log { background: #0a0a0a; border: 1px solid #222; border-radius: 8px; padding: 10px; margin-top: 10px; max-height: 180px; overflow-y: auto; font-size: 11px; color: #ccc; }\n.sim-log .entry { padding: 3px 0; border-bottom: 1px solid #1a1a1a; }\n.sim-log .ts { color: #555; margin-right: 6px; }\n.sim-log .ok { color: #00e5ff; }\n.sim-log .err { color: #e53935; }\n.sim-log .warn { color: #ff9800; }\n</style></head><body>\n\n<div class=&quot;sim-card&quot;>\n  <h4>TRIGGER ERROR</h4>\n  <p>Hit /test-error once to generate a 500 response</p>\n  <button class=&quot;sim-btn red&quot; id=&quot;btn-err&quot;>Fire 500</button>\n</div>\n\n<div class=&quot;sim-card&quot;>\n  <h4>ERROR BURST</h4>\n  <p>Fire N requests to /test-error to spike the error rate metric</p>\n  <div class=&quot;sim-row&quot;>\n    <span class=&quot;sim-label&quot;>Count</span>\n    <input type=&quot;range&quot; class=&quot;sim-slider&quot; min=&quot;5&quot; max=&quot;200&quot; value=&quot;20&quot; id=&quot;sl-burst&quot;>\n    <span class=&quot;sim-val&quot; id=&quot;sv-burst&quot;>20</span>\n  </div>\n  <button class=&quot;sim-btn red&quot; id=&quot;btn-burst&quot;>Fire Burst</button>\n</div>\n\n<div class=&quot;sim-card&quot;>\n  <h4>TRAFFIC SPIKE</h4>\n  <p>Instant burst of concurrent GET /health requests</p>\n  <div class=&quot;sim-row&quot;>\n    <span class=&quot;sim-label&quot;>Requests</span>\n    <input type=&quot;range&quot; class=&quot;sim-slider&quot; min=&quot;10&quot; max=&quot;500&quot; value=&quot;50&quot; id=&quot;sl-spike&quot;>\n    <span class=&quot;sim-val&quot; id=&quot;sv-spike&quot;>50</span>\n  </div>\n  <button class=&quot;sim-btn amber&quot; id=&quot;btn-spike&quot;>Spike</button>\n</div>\n\n<div class=&quot;sim-card&quot;>\n  <h4>CONCURRENT USERS</h4>\n  <p>Simulate N users hitting random endpoints for a set duration</p>\n  <div class=&quot;sim-row&quot;>\n    <span class=&quot;sim-label&quot;>Users</span>\n    <input type=&quot;range&quot; class=&quot;sim-slider&quot; min=&quot;1&quot; max=&quot;200&quot; value=&quot;10&quot; id=&quot;sl-users&quot;>\n    <span class=&quot;sim-val&quot; id=&quot;sv-users&quot;>10</span>\n  </div>\n  <div class=&quot;sim-row&quot;>\n    <span class=&quot;sim-label&quot;>Duration (s)</span>\n    <input type=&quot;range&quot; class=&quot;sim-slider&quot; min=&quot;1&quot; max=&quot;30&quot; value=&quot;5&quot; id=&quot;sl-dur&quot;>\n    <span class=&quot;sim-val&quot; id=&quot;sv-dur&quot;>5</span>\n  </div>\n  <button class=&quot;sim-btn&quot; id=&quot;btn-load&quot;>Start Load</button>\n</div>\n\n<div class=&quot;sim-card&quot;>\n  <h4>FIRE ALERT</h4>\n  <p>Create an alert record in the Flask app database</p>\n  <div class=&quot;sim-row&quot;>\n    <input placeholder=&quot;Alert name&quot; class=&quot;sim-input&quot; style=&quot;width:140px&quot; id=&quot;in-aname&quot;>\n    <select class=&quot;sim-input&quot; id=&quot;in-asev&quot;><option value=&quot;warning&quot;>warning</option><option value=&quot;critical&quot;>critical</option></select>\n    <input placeholder=&quot;Summary (optional)&quot; class=&quot;sim-input&quot; style=&quot;width:200px&quot; id=&quot;in-asum&quot;>\n  </div>\n  <button class=&quot;sim-btn red&quot; id=&quot;btn-alert&quot;>Fire Alert</button>\n</div>\n\n<div class=&quot;sim-card&quot;>\n  <h4>SLOW ENDPOINT</h4>\n  <p>Hit an endpoint that sleeps server-side to spike p95 latency</p>\n  <div class=&quot;sim-row&quot;>\n    <span class=&quot;sim-label&quot;>Delay (s)</span>\n    <input type=&quot;range&quot; class=&quot;sim-slider&quot; min=&quot;1&quot; max=&quot;10&quot; value=&quot;3&quot; id=&quot;sl-slow&quot;>\n    <span class=&quot;sim-val&quot; id=&quot;sv-slow&quot;>3</span>\n  </div>\n  <div class=&quot;sim-row&quot;>\n    <span class=&quot;sim-label&quot;>Requests</span>\n    <input type=&quot;range&quot; class=&quot;sim-slider&quot; min=&quot;1&quot; max=&quot;50&quot; value=&quot;5&quot; id=&quot;sl-slow-n&quot;>\n    <span class=&quot;sim-val&quot; id=&quot;sv-slow-n&quot;>5</span>\n  </div>\n  <button class=&quot;sim-btn amber&quot; id=&quot;btn-slow&quot;>Send Slow Requests</button>\n</div>\n\n<div class=&quot;sim-log&quot; id=&quot;sim-log&quot;></div>\n\n<script>\nvar BASE = window.location.origin;\nvar logData = [];\nvar logEl = document.getElementById(&quot;sim-log&quot;);\n\nfunction addLog(msg, cls) {\n  var ts = new Date().toLocaleTimeString();\n  logData.unshift({ts:ts, msg:msg, cls:cls||&quot;ok&quot;});\n  if (logData.length > 50) logData.length = 50;\n  logEl.innerHTML = logData.map(function(e){\n    return &quot;<div class=entry><span class=ts>&quot;+e.ts+&quot;</span> <span class=&quot;+e.cls+&quot;>&quot;+e.msg+&quot;</span></div>&quot;;\n  }).join(&quot;&quot;);\n}\n\nfunction bindSlider(s, v) {\n  var sl=document.getElementById(s), sv=document.getElementById(v);\n  if(sl&amp;&amp;sv) sl.oninput=function(){sv.textContent=sl.value;};\n}\nbindSlider(&quot;sl-burst&quot;,&quot;sv-burst&quot;);\nbindSlider(&quot;sl-spike&quot;,&quot;sv-spike&quot;);\nbindSlider(&quot;sl-users&quot;,&quot;sv-users&quot;);\nbindSlider(&quot;sl-dur&quot;,&quot;sv-dur&quot;);\nbindSlider(&quot;sl-slow&quot;,&quot;sv-slow&quot;);\nbindSlider(&quot;sl-slow-n&quot;,&quot;sv-slow-n&quot;);\n\ndocument.getElementById(&quot;btn-err&quot;).onclick=function(){\n  var btn=this; btn.disabled=true;\n  fetch(BASE+&quot;/test-error&quot;).then(function(r){\n    addLog(&quot;/test-error -> &quot;+r.status, r.status>=500?&quot;err&quot;:&quot;ok&quot;); btn.disabled=false;\n  }).catch(function(e){addLog(&quot;Error: &quot;+e.message,&quot;err&quot;); btn.disabled=false;});\n};\n\ndocument.getElementById(&quot;btn-burst&quot;).onclick=function(){\n  var btn=this; btn.disabled=true; btn.textContent=&quot;Firing...&quot;;\n  var count=parseInt(document.getElementById(&quot;sl-burst&quot;).value);\n  var ok=0,fail=0,done=0;\n  for(var i=0;i<count;i++){\n    fetch(BASE+&quot;/test-error&quot;).then(function(r){\n      if(r.status>=500)fail++;else ok++;done++;\n      if(done>=count){addLog(&quot;Burst: &quot;+fail+&quot; errors / &quot;+(fail+ok)+&quot; total&quot;,fail>0?&quot;err&quot;:&quot;ok&quot;);btn.disabled=false;btn.textContent=&quot;Fire Burst&quot;;}\n    }).catch(function(){fail++;done++;\n      if(done>=count){addLog(&quot;Burst: &quot;+fail+&quot; errors / &quot;+(fail+ok)+&quot; total&quot;,&quot;err&quot;);btn.disabled=false;btn.textContent=&quot;Fire Burst&quot;;}\n    });\n  }\n};\n\ndocument.getElementById(&quot;btn-spike&quot;).onclick=function(){\n  var btn=this; btn.disabled=true; btn.textContent=&quot;Spiking...&quot;;\n  var count=parseInt(document.getElementById(&quot;sl-spike&quot;).value);\n  var t0=Date.now(),done=0,oks=0;\n  for(var i=0;i<count;i++){\n    fetch(BASE+&quot;/health&quot;).then(function(r){\n      if(r.status===200)oks++;done++;\n      if(done>=count){var ms=Date.now()-t0;addLog(&quot;Spike: &quot;+oks+&quot;/&quot;+count+&quot; ok in &quot;+ms+&quot;ms (&quot;+Math.round(count/(ms/1000))+&quot; rps)&quot;,&quot;ok&quot;);btn.disabled=false;btn.textContent=&quot;Spike&quot;;}\n    }).catch(function(){done++;\n      if(done>=count){var ms=Date.now()-t0;addLog(&quot;Spike: &quot;+oks+&quot;/&quot;+count+&quot; ok in &quot;+ms+&quot;ms&quot;,&quot;warn&quot;);btn.disabled=false;btn.textContent=&quot;Spike&quot;;}\n    });\n  }\n};\n\ndocument.getElementById(&quot;btn-load&quot;).onclick=function(){\n  var btn=this;\n  var users=parseInt(document.getElementById(&quot;sl-users&quot;).value);\n  var dur=parseInt(document.getElementById(&quot;sl-dur&quot;).value)*1000;\n  btn.disabled=true; btn.textContent=&quot;Running &quot;+(dur/1000)+&quot;s...&quot;;\n  var eps=[&quot;/health&quot;,&quot;/users?per_page=5&quot;,&quot;/urls?per_page=5&quot;,&quot;/events?per_page=5&quot;];\n  var end=Date.now()+dur, total=0, errs=0, lats=[], active=users;\n  function loop(){\n    if(Date.now()>=end){active--;if(active<=0)finish();return;}\n    var ep=eps[Math.floor(Math.random()*eps.length)],t0=Date.now();\n    fetch(BASE+ep).then(function(r){lats.push(Date.now()-t0);total++;if(r.status>=500)errs++;loop();}).catch(function(){errs++;total++;loop();});\n  }\n  function finish(){\n    lats.sort(function(a,b){return a-b;});\n    var p50=lats[Math.floor(lats.length*0.5)]||0,p95=lats[Math.floor(lats.length*0.95)]||0;\n    addLog(&quot;Load: &quot;+users+&quot; users, &quot;+total+&quot; reqs, &quot;+(total/(dur/1000)).toFixed(0)+&quot; rps, p50=&quot;+p50+&quot;ms p95=&quot;+p95+&quot;ms, err=&quot;+(total?((errs/total)*100).toFixed(1):&quot;0&quot;)+&quot;%&quot;,errs>0?&quot;warn&quot;:&quot;ok&quot;);\n    btn.disabled=false;btn.textContent=&quot;Start Load&quot;;\n  }\n  for(var u=0;u<users;u++)loop();\n};\n\ndocument.getElementById(&quot;btn-alert&quot;).onclick=function(){\n  var btn=this;\n  var nameEl=document.getElementById(&quot;in-aname&quot;),sevEl=document.getElementById(&quot;in-asev&quot;),sumEl=document.getElementById(&quot;in-asum&quot;);\n  var name=nameEl.value.trim();\n  if(!name){addLog(&quot;Alert name required&quot;,&quot;err&quot;);return;}\n  btn.disabled=true;\n  fetch(BASE+&quot;/alerts&quot;,{method:&quot;POST&quot;,headers:{&quot;Content-Type&quot;:&quot;application/json&quot;},body:JSON.stringify({alert_name:name,severity:sevEl.value,summary:sumEl.value.trim()||undefined,source:&quot;grafana-simulate&quot;})})\n    .then(function(r){return r.json();}).then(function(d){addLog(&quot;Alert fired: &quot;+name+&quot; (&quot;+sevEl.value+&quot;) id=&quot;+(d.id||&quot;?&quot;),&quot;ok&quot;);nameEl.value=&quot;&quot;;sumEl.value=&quot;&quot;;btn.disabled=false;})\n    .catch(function(e){addLog(&quot;Alert error: &quot;+e.message,&quot;err&quot;);btn.disabled=false;});\n};\n\ndocument.getElementById(&quot;btn-slow&quot;).onclick=function(){\n  var btn=this; btn.disabled=true; btn.textContent=&quot;Sending...&quot;;\n  var delay=parseInt(document.getElementById(&quot;sl-slow&quot;).value);\n  var n=parseInt(document.getElementById(&quot;sl-slow-n&quot;).value);\n  var done=0,ok=0;\n  for(var i=0;i<n;i++){\n    fetch(BASE+&quot;/test-slow?delay=&quot;+delay).then(function(r){\n      if(r.status<500)ok++;done++;\n      if(done>=n){addLog(&quot;Slow: &quot;+ok+&quot;/&quot;+n+&quot; completed (&quot;+delay+&quot;s delay each)&quot;,&quot;warn&quot;);btn.disabled=false;btn.textContent=&quot;Send Slow Requests&quot;;}\n    }).catch(function(){done++;\n      if(done>=n){addLog(&quot;Slow: &quot;+ok+&quot;/&quot;+n+&quot; completed (&quot;+delay+&quot;s delay each)&quot;,&quot;err&quot;);btn.disabled=false;btn.textContent=&quot;Send Slow Requests&quot;;}\n    });\n  }\n};\n\naddLog(&quot;Simulation panel ready&quot;, &quot;ok&quot;);\n</script>\n</body></html>\" style=\"width:100%;height:100%;border:none;background:transparent;\" sandbox=\"allow-scripts allow-same-origin\"></iframe>"
           }
         },
         {
           "id": 72,
           "type": "timeseries",
           "title": "Live Error Rate (watch during simulation)",
-          "description": "5xx error fraction — watch this spike when you fire error bursts.",
-          "gridPos": { "x": 12, "y": 1, "w": 12, "h": 6 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "description": "5xx error fraction \u2014 watch this spike when you fire error bursts.",
+          "gridPos": {
+            "x": 12,
+            "y": 1,
+            "w": 12,
+            "h": 6
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
           "targets": [
             {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "sum(rate(http_requests_total{status_code=~\"5..\"}[1m])) / clamp_min(sum(rate(http_requests_total[1m])), 0.001) * 100",
               "legendFormat": "Error %",
               "refId": "A"
@@ -1980,36 +2020,71 @@
           "fieldConfig": {
             "defaults": {
               "unit": "percent",
-              "color": { "mode": "thresholds" },
+              "color": {
+                "mode": "thresholds"
+              },
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
-                  { "color": "#00bcd4", "value": null },
-                  { "color": "#ff9800", "value": 1 },
-                  { "color": "#e53935", "value": 5 }
+                  {
+                    "color": "#00bcd4",
+                    "value": null
+                  },
+                  {
+                    "color": "#ff9800",
+                    "value": 1
+                  },
+                  {
+                    "color": "#e53935",
+                    "value": 5
+                  }
                 ]
               },
-              "custom": { "fillOpacity": 20, "gradientMode": "hue", "lineWidth": 2, "showPoints": "always", "pointSize": 4 }
+              "custom": {
+                "fillOpacity": 20,
+                "gradientMode": "hue",
+                "lineWidth": 2,
+                "showPoints": "always",
+                "pointSize": 4
+              }
             }
           },
-          "options": { "tooltip": { "mode": "single" } }
+          "options": {
+            "tooltip": {
+              "mode": "single"
+            }
+          }
         },
         {
           "id": 73,
           "type": "timeseries",
           "title": "Live Request Rate (watch during simulation)",
-          "description": "Requests per second — watch this spike when you run traffic spikes or concurrent users.",
-          "gridPos": { "x": 12, "y": 7, "w": 12, "h": 6 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "description": "Requests per second \u2014 watch this spike when you run traffic spikes or concurrent users.",
+          "gridPos": {
+            "x": 12,
+            "y": 7,
+            "w": 12,
+            "h": 6
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
           "targets": [
             {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "sum(rate(http_requests_total[1m]))",
               "legendFormat": "Req/s",
               "refId": "A"
             },
             {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[1m])) by (le)) * 1000",
               "legendFormat": "p95 (ms)",
               "refId": "B"
@@ -2017,13 +2092,28 @@
           ],
           "fieldConfig": {
             "defaults": {
-              "color": { "mode": "palette-classic" },
-              "custom": { "fillOpacity": 15, "gradientMode": "hue", "lineWidth": 2, "showPoints": "always", "pointSize": 4, "axisSoftMin": 0 }
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "fillOpacity": 15,
+                "gradientMode": "hue",
+                "lineWidth": 2,
+                "showPoints": "always",
+                "pointSize": 4,
+                "axisSoftMin": 0
+              }
             }
           },
           "options": {
-            "tooltip": { "mode": "multi" },
-            "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true }
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            }
           }
         }
       ]
@@ -2033,7 +2123,12 @@
       "type": "text",
       "title": "",
       "transparent": true,
-      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
       "options": {
         "mode": "html",
         "content": "<style>\n@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&family=Share+Tech+Mono&display=swap');\n\n/* Rounded panels with cyan border glow */\n.react-grid-item > div:first-child,\n[class*='panel-container'],\n.panel-container {\n  border-radius: 14px !important;\n  overflow: hidden !important;\n  border: 1px solid rgba(0, 188, 212, 0.45) !important;\n  box-shadow: 0 0 28px rgba(0, 188, 212, 0.25), 0 0 8px rgba(0, 188, 212, 0.2), inset 0 1px 0 rgba(0, 188, 212, 0.12) !important;\n}\n\n/* Orbitron for panel titles */\n[class*='panel-title'] h6,\n[class*='panel-title'] span,\n[class*='title-text'] {\n  font-family: 'Orbitron', sans-serif !important;\n  font-size: 10px !important;\n  font-weight: 600 !important;\n  letter-spacing: 0.1em !important;\n  text-transform: uppercase !important;\n  color: rgba(0, 229, 255, 0.85) !important;\n}\n\n/* Share Tech Mono for all values and body text */\nbody,\n[class*='stat-text'],\n[class*='stat-value'],\n[class*='graph-legend'],\n[class*='gauge'],\nsvg text,\n.grafana-app {\n  font-family: 'Share Tech Mono', monospace !important;\n}\n</style>"

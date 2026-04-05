@@ -3,13 +3,21 @@ from datetime import datetime
 from peewee import IntegrityError
 
 from app.models.event import Event
+from app.models.url import Url
+from app.models.user import User
 from app.services.db_errors import classify_event_integrity_error
+from app.services.errors import ValidationError
 from app.services.schemas import parse_event_create
 
 
 class EventsService:
     def create_event(self, payload: dict) -> Event:
         parsed = parse_event_create(payload)
+
+        if User.get_or_none(User.id == parsed.user_id) is None:
+            raise ValidationError("user_id not found", details={"fields": ["user_id"]})
+        if Url.get_or_none(Url.id == parsed.url_id) is None:
+            raise ValidationError("url_id not found", details={"fields": ["url_id"]})
 
         try:
             return Event.create(

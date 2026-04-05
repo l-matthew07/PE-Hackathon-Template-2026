@@ -21,5 +21,8 @@ jobs:
             APP_DIR="${{ vars.VM_APP_DIR }}"
 
             cd "${APP_DIR}"
+            git fetch --all --prune
+            git checkout main
+            git reset --hard origin/main
             chmod +x scripts/deploy-vm.sh
             ./scripts/deploy-vm.sh

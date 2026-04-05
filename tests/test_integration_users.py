@@ -170,3 +170,9 @@ class TestBulkUsers:
     def test_bulk_import_requires_file_field(self, client):
         resp = client.post("/users/bulk", data={}, content_type="multipart/form-data")
         assert resp.status_code == 400
+
+    def test_bulk_import_by_filename_json(self, client):
+        resp = client.post("/users/bulk", json={"file": "users.csv", "row_count": 400})
+        assert resp.status_code == 201
+        payload = resp.get_json()
+        assert payload["imported"] == 400

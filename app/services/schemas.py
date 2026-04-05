@@ -354,12 +354,13 @@ def parse_event_create(payload: dict) -> EventCreatePayload:
     details: str | None
     if details_raw is None or details_raw == "":
         details = None
-    elif isinstance(details_raw, (dict, list)):
+    elif isinstance(details_raw, dict):
         details = json.dumps(details_raw)
-    elif isinstance(details_raw, str):
-        details = details_raw
     else:
-        details = str(details_raw)
+        raise ValidationError(
+            "details must be an object",
+            details={"fields": ["details"]},
+        )
 
     return EventCreatePayload(
         url_id=url_id,

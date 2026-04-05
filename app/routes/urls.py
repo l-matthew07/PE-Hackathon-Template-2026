@@ -1,3 +1,4 @@
+from flask import request
 from flask_openapi3.blueprint import APIBlueprint
 from flask_openapi3.models.tag import Tag
 
@@ -12,6 +13,7 @@ from app.models.url import Url
 from app.services.errors import ServiceError
 from app.services.schemas import (
     ErrorEnvelope,
+    ImportedCountResponse,
     UrlCreatePayload,
     UrlIdPath,
     UrlListQuery,
@@ -118,3 +120,40 @@ def delete_url(path: UrlIdPath):
     Url.delete().where(Url.id == path.url_id).execute()
     cache_delete(_url_cache_key(path.url_id))
     return "", 204
+
+
+@urls_bp.post("/bulk", responses={201: ImportedCountResponse, 400: ErrorEnvelope})
+def bulk_load_urls():
+    json_payload = request.get_json(silent=True)
+    if isinstance(json_payload, dict) and "file" in json_payload:
+        filename = str(json_payload.get("file") or "").strip()
+        if not filename:
+            return error_response(
+                "file is required",
+                "VALIDATION_ERROR",
+                400,
+                details={"fields": ["file"]},
+            )
+
+        try:
+            loaded_count = urls_service.bulk_load_urls(filename=filename)
+        except ServiceError as exc:
+            return error_response(exc.message, exc.code, exc.status, details=exc.details)
+
+        return {"imported": loaded_count}, 201
+
+    uploaded_file = request.files.get("file")
+    if uploaded_file is None or not uploaded_file.filename:
+        return error_response(
+            "multipart/form-data with a 'file' field is required",
+            "VALIDATION_ERROR",
+            400,
+            details={"fields": ["file"]},
+        )
+
+    try:
+        loaded_count = urls_service.bulk_load_urls_upload(uploaded_file)
+    except ServiceError as exc:
+        return error_response(exc.message, exc.code, exc.status, details=exc.details)
+
+    return {"imported": loaded_count}, 201

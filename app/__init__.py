@@ -1,7 +1,9 @@
 import logging
 import os
+import json
 import time
 import uuid
+from datetime import UTC, datetime
 
 from dotenv import load_dotenv
 from flask import g, jsonify, redirect, request
@@ -192,6 +194,8 @@ def create_app():
     def resolve_short_code(short_code: str):
         cache_key = f"short_code:{short_code}"
         original_url = cache_get(cache_key)
+        resolved_url_id = None
+        resolved_user_id = None
 
         if original_url is None:
             url = Url.get_or_none((Url.short_code == short_code) & (Url.is_active == True))
@@ -199,7 +203,33 @@ def create_app():
                 return error_response("URL not found", "NOT_FOUND", 404)
 
             original_url = url.original_url
+            resolved_url_id = url.id
+            resolved_user_id = getattr(url, "user_id_id", None)
             cache_set(cache_key, original_url, ttl_seconds=settings.cache_ttl_seconds)
+        else:
+            url = Url.get_or_none((Url.short_code == short_code) & (Url.is_active == True))
+            if url is None:
+                return error_response("URL not found", "NOT_FOUND", 404)
+            resolved_url_id = url.id
+            resolved_user_id = getattr(url, "user_id_id", None)
+
+        if resolved_url_id is not None and resolved_user_id is not None:
+            try:
+                Event.create(
+                    url_id=resolved_url_id,
+                    user_id=resolved_user_id,
+                    event_type="click",
+                    timestamp=datetime.now(UTC),
+                    details=json.dumps(
+                        {
+                            "short_code": short_code,
+                            "original_url": original_url,
+                            "source": "resolve_short_code",
+                        }
+                    ),
+                )
+            except Exception:
+                _logger.warning("Failed to log click event for short_code=%s", short_code)
 
         return redirect(original_url, code=302)
 
