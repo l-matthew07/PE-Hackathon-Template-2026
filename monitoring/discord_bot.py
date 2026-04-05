@@ -310,17 +310,6 @@ async def auto_escalation_loop() -> None:
                 silence_id = state.get("silence_id")
                 if silence_id:
                     await asyncio.get_event_loop().run_in_executor(None, expire_silence, silence_id)
-                # Reply to the original alert message if possible
-                resolved_msg = f"✅ **[RESOLVED] {alert_key}** — The service has recovered and is back to normal."
-                message_id = state.get("message_id")
-                try:
-                    if message_id:
-                        original = await channel.fetch_message(int(message_id))
-                        await original.reply(resolved_msg)
-                    else:
-                        await channel.send(resolved_msg)
-                except Exception:
-                    await channel.send(resolved_msg)
                 asyncio.get_event_loop().create_task(close_incident_channel(alert_key))
                 continue
 
@@ -386,16 +375,15 @@ async def on_message(message: discord.Message):
         except Exception as e:
             print(f"Failed to add reactions: {e}", flush=True)
 
-    # Mark resolved — relay posts "✅ AlertName" content for resolved messages
-    if "✅" in content and "acknowledged" not in content.lower() and "silenced" not in content.lower():
+    # Mark resolved when relay posts a resolved message (✅ icon, not from bot itself)
+    if "✅" in content:
         after_check = content.split("✅", 1)[-1].strip()
-        print(f"Resolved message detected, content after ✅: '{after_check}', active alerts: {list(active_alerts.keys())}", flush=True)
         for chunk in after_check.split(","):
             alert_key = chunk.strip()
-            print(f"Checking alert_key: '{alert_key}'", flush=True)
-            if alert_key in active_alerts:
+            if alert_key in active_alerts and not active_alerts[alert_key].get("resolved"):
                 active_alerts[alert_key]["resolved"] = True
-                print(f"Alert resolved: {alert_key}", flush=True)
+                persist_alert(alert_key, active_alerts[alert_key])
+                print(f"Alert resolved via relay: {alert_key}", flush=True)
                 asyncio.get_event_loop().create_task(close_incident_channel(alert_key))
 
 
