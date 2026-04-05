@@ -321,10 +321,17 @@ async def auto_escalation_loop() -> None:
                 silence_id = state.get("silence_id")
                 if silence_id:
                     await asyncio.get_event_loop().run_in_executor(None, expire_silence, silence_id)
-                await channel.send(
-                    f"✅ **[RESOLVED] {alert_key}**\n"
-                    f"The service has recovered and is back to normal."
-                )
+                # Reply to the original alert message if possible
+                resolved_msg = f"✅ **[RESOLVED] {alert_key}**\nThe service has recovered and is back to normal."
+                message_id = state.get("message_id")
+                try:
+                    if message_id:
+                        original = await channel.fetch_message(int(message_id))
+                        await original.reply(resolved_msg)
+                    else:
+                        await channel.send(resolved_msg)
+                except Exception:
+                    await channel.send(resolved_msg)
                 asyncio.get_event_loop().create_task(close_incident_channel(alert_key))
                 continue
 
