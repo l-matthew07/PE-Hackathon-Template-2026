@@ -4,6 +4,8 @@ Uses an in-memory SQLite database so tests run without Postgres/Redis.
 """
 
 import os
+import json
+from datetime import UTC, datetime
 
 # Set env vars BEFORE any app code is imported so Settings picks them up.
 os.environ.update(
@@ -59,6 +61,7 @@ def app(_setup_db):
 
     from app.cache import cache_get, cache_set
     from app.lib.api import error_response
+    from app.models.event import Event
     from app.models.url import Url
     from app.routes.alerts import alerts_bp
     from app.routes.events import events_bp
@@ -83,6 +86,8 @@ def app(_setup_db):
     def resolve_short_code(short_code: str):
         cache_key = f"short_code:{short_code}"
         original_url = cache_get(cache_key)
+        resolved_url_id = None
+        resolved_user_id = None
 
         if original_url is None:
             url = Url.get_or_none((Url.short_code == short_code) & (Url.is_active == True))
@@ -90,7 +95,30 @@ def app(_setup_db):
                 return error_response("URL not found", "NOT_FOUND", 404)
 
             original_url = url.original_url
+            resolved_url_id = url.id
+            resolved_user_id = getattr(url, "user_id_id", None)
             cache_set(cache_key, original_url, ttl_seconds=3600)
+        else:
+            url = Url.get_or_none((Url.short_code == short_code) & (Url.is_active == True))
+            if url is None:
+                return error_response("URL not found", "NOT_FOUND", 404)
+            resolved_url_id = url.id
+            resolved_user_id = getattr(url, "user_id_id", None)
+
+        if resolved_url_id is not None and resolved_user_id is not None:
+            Event.create(
+                url_id=resolved_url_id,
+                user_id=resolved_user_id,
+                event_type="click",
+                timestamp=datetime.now(UTC),
+                details=json.dumps(
+                    {
+                        "short_code": short_code,
+                        "original_url": original_url,
+                        "source": "resolve_short_code",
+                    }
+                ),
+            )
 
         return redirect(original_url, code=302)
 

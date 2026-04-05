@@ -2,7 +2,9 @@
 
 import io
 
+from app.models.event import Event
 from app.models.url import Url
+from app.models.user import User
 from app.routes.urls import urls_service
 
 
@@ -198,20 +200,58 @@ class TestDeleteUrl:
 
 class TestResolveShortCode:
     def test_resolve_existing_short_code_redirects(self, client):
-        created = client.post("/urls", json={"original_url": "https://resolve-me.com", "short_code": "resolve1"})
+        user = User.create(username="resolveuser", email="resolve@example.com")
+        created = client.post(
+            "/urls",
+            json={
+                "original_url": "https://resolve-me.com",
+                "short_code": "resolve1",
+                "user_id": user.id,
+            },
+        )
         assert created.status_code == 201
 
         resp = client.get("/resolve1", follow_redirects=False)
         assert resp.status_code == 302
         assert resp.headers["Location"] == "https://resolve-me.com"
 
+        created_url_id = created.get_json()["id"]
+        click_event = Event.get_or_none(
+            (Event.url_id == created_url_id)
+            & (Event.user == user.id)
+            & (Event.event_type == "click")
+        )
+        assert click_event is not None
+
     def test_resolve_inactive_short_code_returns_404(self, client):
-        created = client.post("/urls", json={"original_url": "https://inactive-me.com", "short_code": "inactive1"})
+        user = User.create(username="inactiveuser", email="inactive@example.com")
+        created = client.post(
+            "/urls",
+            json={
+                "original_url": "https://inactive-me.com",
+                "short_code": "inactive1",
+                "user_id": user.id,
+            },
+        )
         url_id = created.get_json()["id"]
         client.put(f"/urls/{url_id}", json={"is_active": False})
 
         resp = client.get("/inactive1", follow_redirects=False)
         assert resp.status_code == 404
+
+        click_event = Event.get_or_none(
+            (Event.url_id == url_id)
+            & (Event.user == user.id)
+            & (Event.event_type == "click")
+        )
+        assert click_event is None
+
+    def test_resolve_missing_short_code_returns_404_without_event(self, client):
+        before_count = Event.select().count()
+        resp = client.get("/does-not-exist", follow_redirects=False)
+        assert resp.status_code == 404
+        after_count = Event.select().count()
+        assert after_count == before_count
 
 
 class TestBulkUrls:
