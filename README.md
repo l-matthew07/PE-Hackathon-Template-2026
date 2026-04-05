@@ -3,8 +3,8 @@
 A URL shortener with a full incident response, observability, and reliability stack — because shortening URLs is easy, keeping them up at 3am is not.
 
 **Landing**: http://wealways.online
+
 **Live dashboard:** http://wealways.online/dashboard
-Note: Didn't have time to set up https :p
 
 ---
 
