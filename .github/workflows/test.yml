@@ -39,7 +39,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Verify docker-compose.yml
-        run: docker compose config -q
+        run: docker compose up --dry-run
 
   deploy:
     name: Deploy
