@@ -104,35 +104,6 @@
 
 ---
 
-## Sherlock Mode — Diagnosing a Fake Incident
-
-This is a walkthrough of how we diagnosed a simulated high error rate using only the dashboard and logs.
-
-**The scenario:** A teammate ran `/test-error` 50 times to simulate a spike in 5xx errors. No one told us what they did — we had to figure it out.
-
-**Step 1 — The alert fires.**
-Discord posts: `web:5000 has a high error rate — 5xx responses exceed 5% of all traffic.`
-
-**Step 2 — Open Grafana.**
-The first thing we looked at was the **Error Rate %** panel — it showed a sharp spike from 0% to ~100% starting at a specific timestamp. That told us this was sudden, not a gradual degradation.
-
-**Step 3 — Find the broken endpoint.**
-We looked at **Traffic — Requests per Second**, filtered by `status_code=~"5.."`. All the 5xx traffic was coming from one endpoint: `/test-error`. No other endpoints were affected.
-
-**Step 4 — Confirm in logs.**
-```bash
-docker compose logs web --tail 50 | grep "500"
-```
-Every log line showed `GET /test-error → 500`. The timestamps matched exactly when the spike appeared on the dashboard.
-
-**Step 5 — Conclusion.**
-The root cause was intentional chaos injection via `/test-error`. In a real incident, this pattern (sudden spike, single endpoint, no DB or Redis errors in logs) would point to either a bad deploy on that route or intentional load testing. We'd check `git log` to see if a recent commit touched that endpoint.
-
-**Step 6 — Verify resolution.**
-After the chaos stopped, the **Error Rate %** panel returned to 0% within one Prometheus scrape interval (15 seconds). Alert resolved automatically.
-
----
-
 ## What each Grafana panel tells you
 
 | Panel | What to look for |
