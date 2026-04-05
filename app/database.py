@@ -35,6 +35,18 @@ def init_db(app):
 
     logger.info("Database initialised: %s@%s:%s", settings.database_name, settings.database_host, settings.database_port)
 
+    # Support direct run.py usage against a fresh database by ensuring base tables exist.
+    # Only create tables that are missing to avoid re-applying indexes on existing tables.
+    from app.models.alert import Alert
+    from app.models.event import Event
+    from app.models.url import Url
+    from app.models.user import User
+
+    models = [User, Url, Event, Alert]
+    missing_models = [model for model in models if not model.table_exists()]
+    if missing_models:
+        database.create_tables(missing_models, safe=True)
+
     from app.routes.metrics import db_pool_connections_active
 
     @app.before_request
