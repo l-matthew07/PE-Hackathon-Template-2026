@@ -322,16 +322,20 @@ async def auto_escalation_loop() -> None:
                 if silence_id:
                     await asyncio.get_event_loop().run_in_executor(None, expire_silence, silence_id)
                 # Reply to the original alert message if possible
-                resolved_msg = f"✅ **[RESOLVED] {alert_key}**\nThe service has recovered and is back to normal."
+                resolved_embed = discord.Embed(
+                    title=f"[RESOLVED] {alert_key}",
+                    description="The service has recovered and is back to normal.",
+                    color=0x00FF00,
+                )
                 message_id = state.get("message_id")
                 try:
                     if message_id:
                         original = await channel.fetch_message(int(message_id))
-                        await original.reply(resolved_msg)
+                        await original.reply(content="✅", embed=resolved_embed)
                     else:
-                        await channel.send(resolved_msg)
+                        await channel.send(content="✅", embed=resolved_embed)
                 except Exception:
-                    await channel.send(resolved_msg)
+                    await channel.send(content="✅", embed=resolved_embed)
                 asyncio.get_event_loop().create_task(close_incident_channel(alert_key))
                 continue
 
@@ -427,6 +431,13 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
 
     # Only handle reactions on original alert messages (ones the bot added reactions to)
     alert_key = message_to_alert.get(payload.message_id)
+    # Fallback: check Redis directly in case bot restarted and lost in-memory map
+    if alert_key is None:
+        alert_key = rdb.get(f"msg:{payload.message_id}")
+        if alert_key and alert_key in active_alerts:
+            message_to_alert[payload.message_id] = alert_key
+        else:
+            alert_key = None
     if alert_key is None:
         return
 
