@@ -56,7 +56,7 @@ services:
   web:
     build: .
     command: >-
-      uv run gunicorn -w 1 -k gthread --threads 8 -b 0.0.0.0:5000 wsgi:app --timeout 60
+      uv run gunicorn -w 2 -k gthread --threads 16 -b 0.0.0.0:5000 wsgi:app --timeout 60 --backlog 2048
     depends_on:
       db:
         condition: service_healthy
@@ -72,13 +72,13 @@ services:
       DATABASE_PORT: 5432
       DATABASE_USER: postgres
       DATABASE_PASSWORD: postgres
-      DATABASE_POOL_MAX_CONNECTIONS: 10
+      DATABASE_POOL_MAX_CONNECTIONS: 40
       APP_BASE_URL: http://localhost
       REDIS_URL: redis://redis:6379/0
     expose:
       - "5000"
     deploy:
-      replicas: 3
+      replicas: 5
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:5000/health" ]
       interval: 10s
