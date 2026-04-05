@@ -4,7 +4,7 @@
 
 ---
 
-## Alert: ServiceDown
+## Alert: Service Down
 
 **What it means:** Prometheus cannot reach the Flask app. The service is completely unreachable.
 
@@ -36,7 +36,7 @@
 
 ---
 
-## Alert: HighErrorRate
+## Alert: High Error Rate
 
 **What it means:** More than 5% of requests are returning 5xx errors over the last 2 minutes.
 
@@ -68,7 +68,7 @@
 
 ---
 
-## Alert: HighLatencyP95
+## Alert: High Latency P95
 
 **What it means:** 95% of requests are taking longer than 2 seconds for at least 2 minutes.
 
