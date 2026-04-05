@@ -228,7 +228,7 @@ services:
 
   discord-bot:
     image: python:3.13-alpine
-    command: sh -c "pip install --quiet discord.py && python /app/discord_bot.py"
+    command: sh -c "pip install --quiet discord.py redis && python /app/discord_bot.py"
     volumes:
       - ./monitoring/discord_bot.py:/app/discord_bot.py:ro
     environment:
@@ -240,8 +240,10 @@ services:
       DISCORD_ONCALL_ROLE_ID: ${DISCORD_ONCALL_ROLE_ID:-1490051693251919962}
       DISCORD_SENIOR_ROLE_ID: ${DISCORD_SENIOR_ROLE_ID:-1490081907839471908}
       DISCORD_LEAD_ROLE_ID: ${DISCORD_LEAD_ROLE_ID:-1490082322383376526}
+      REDIS_URL: redis://redis:6379/1
     depends_on:
       - alertmanager
+      - redis
     restart: unless-stopped
     networks:
       - monitoring

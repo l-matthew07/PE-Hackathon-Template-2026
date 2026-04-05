@@ -20,12 +20,14 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 
 import discord
+import redis
 
 TOKEN = os.environ["DISCORD_BOT_TOKEN"]
 CHANNEL_ID = int(os.environ["DISCORD_ALERT_CHANNEL_ID"])
 GUILD_ID = int(os.environ.get("DISCORD_GUILD_ID", "1490040458481762384"))
 INCIDENT_CATEGORY_ID = int(os.environ.get("DISCORD_INCIDENT_CATEGORY_ID", "1490097852096053418"))
 ALERTMANAGER_URL = os.environ.get("ALERTMANAGER_URL", "http://alertmanager:9093")
+REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/1")
 
 ESCALATION_ROLES = [
     os.environ.get("DISCORD_ONCALL_ROLE_ID", "1490051693251919962"),
@@ -42,11 +44,63 @@ intents.reactions = True
 intents.members = True
 
 client = discord.Client(intents=intents)
+rdb = redis.from_url(REDIS_URL, decode_responses=True)
 
 # alert_key -> {first_seen, tier, message_id, acknowledged, resolved, incident_channel_id}
 active_alerts: dict[str, dict] = {}
 # message_id -> alert_key (for fast lookup on reaction)
 message_to_alert: dict[int, str] = {}
+
+
+def _serialize_state(state: dict) -> dict:
+    """Convert state to JSON-serializable form."""
+    s = state.copy()
+    if isinstance(s.get("first_seen"), datetime):
+        s["first_seen"] = s["first_seen"].isoformat()
+    return s
+
+
+def _deserialize_state(state: dict) -> dict:
+    """Restore types from Redis."""
+    s = state.copy()
+    if isinstance(s.get("first_seen"), str):
+        s["first_seen"] = datetime.fromisoformat(s["first_seen"])
+    if "message_id" in s:
+        s["message_id"] = int(s["message_id"])
+    if "incident_channel_id" in s and s["incident_channel_id"]:
+        s["incident_channel_id"] = int(s["incident_channel_id"])
+    for bool_key in ("acknowledged", "resolved"):
+        if bool_key in s:
+            s[bool_key] = str(s[bool_key]).lower() == "true"
+    if "tier" in s:
+        s["tier"] = int(s["tier"])
+    return s
+
+
+def persist_alert(alert_key: str, state: dict) -> None:
+    rdb.hset(f"alert:{alert_key}", mapping=_serialize_state(state))
+    rdb.expire(f"alert:{alert_key}", 86400)  # 24h TTL
+
+
+def persist_message(message_id: int, alert_key: str) -> None:
+    rdb.set(f"msg:{message_id}", alert_key, ex=86400)
+
+
+def load_state() -> None:
+    """Restore active_alerts and message_to_alert from Redis on startup."""
+    for key in rdb.scan_iter("alert:*"):
+        alert_key = key[len("alert:"):]
+        raw = rdb.hgetall(key)
+        if raw:
+            state = _deserialize_state(raw)
+            if not state.get("resolved"):
+                active_alerts[alert_key] = state
+    for key in rdb.scan_iter("msg:*"):
+        message_id = int(key[len("msg:"):])
+        alert_key = rdb.get(key)
+        if alert_key and alert_key in active_alerts:
+            message_to_alert[message_id] = alert_key
+    print(f"Restored {len(active_alerts)} active alerts from Redis", flush=True)
 
 
 async def create_incident_channel(alert_key: str, acknowledged_by: discord.Member | None, guild: discord.Guild) -> discord.TextChannel | None:
@@ -254,6 +308,7 @@ async def auto_escalation_loop() -> None:
             # If alert was acknowledged (silenced) and is no longer in Alertmanager, it resolved
             if state.get("acknowledged") and alert_key not in active_in_am:
                 state["resolved"] = True
+                persist_alert(alert_key, state)
                 print(f"Silenced alert resolved: {alert_key}", flush=True)
                 # Expire the silence so it doesn't linger
                 silence_id = state.get("silence_id")
@@ -284,6 +339,7 @@ async def auto_escalation_loop() -> None:
 
 @client.event
 async def on_ready():
+    load_state()
     print(f"Discord bot ready as {client.user}", flush=True)
     client.loop.create_task(auto_escalation_loop())
 
@@ -307,14 +363,17 @@ async def on_message(message: discord.Message):
             alert_key = chunk.strip()
             if alert_key and not alert_key.startswith("<"):
                 if alert_key not in active_alerts:
-                    active_alerts[alert_key] = {
+                    state = {
                         "first_seen": datetime.now(timezone.utc),
                         "tier": 0,
                         "message_id": message.id,
                         "acknowledged": False,
                         "resolved": False,
                     }
+                    active_alerts[alert_key] = state
                     message_to_alert[message.id] = alert_key
+                    persist_alert(alert_key, state)
+                    persist_message(message.id, alert_key)
                     print(f"Tracking alert: {alert_key}", flush=True)
 
         # Auto-add reaction shortcuts so users can easily respond
@@ -385,6 +444,7 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
                 if incident_channel:
                     state["incident_channel_id"] = incident_channel.id
 
+            persist_alert(alert_key, state)
             channel_mention = f" See <#{incident_channel.id}> to coordinate." if incident_channel else ""
             await message.reply(
                 f"✅ Acknowledged by <@{payload.user_id}> — **{alert_key}** silenced for 1 hour. "
