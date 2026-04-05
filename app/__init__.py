@@ -111,6 +111,7 @@ def create_app():
         active_requests,
         http_request_duration_seconds,
         http_requests_total,
+        url_shortener_redirects_total,
     )
 
     _SKIP_PATHS = ("/admin", "/metrics", "/health", "/docs", "/openapi", "/static")
@@ -198,6 +199,7 @@ def create_app():
         resolved_user_id = None
 
         if original_url is None:
+            url_shortener_redirects_total.labels(status="miss").inc()
             url = Url.get_or_none((Url.short_code == short_code) & (Url.is_active == True))
             if url is None:
                 return error_response("URL not found", "NOT_FOUND", 404)
@@ -207,6 +209,7 @@ def create_app():
             resolved_user_id = getattr(url, "user_id_id", None)
             cache_set(cache_key, original_url, ttl_seconds=settings.cache_ttl_seconds)
         else:
+            url_shortener_redirects_total.labels(status="hit").inc()
             url = Url.get_or_none((Url.short_code == short_code) & (Url.is_active == True))
             if url is None:
                 return error_response("URL not found", "NOT_FOUND", 404)

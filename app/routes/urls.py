@@ -2,7 +2,7 @@ from flask import request
 from flask_openapi3.blueprint import APIBlueprint
 from flask_openapi3.models.tag import Tag
 
-from app.cache import cache_delete, cache_get_json, cache_set_json
+from app.cache import cache_delete, cache_delete_prefix, cache_get_json, cache_set_json
 from app.config import get_settings
 from app.lib.api import error_response, list_response
 from app.lib.utils import (
@@ -31,6 +31,12 @@ urls_service = UrlsService()
 
 def _url_cache_key(url_id: int) -> str:
     return f"url:{url_id}"
+
+
+def _url_list_cache_key(page: int, per_page: int, user_id: int | None, is_active: bool | None) -> str:
+    user_part = "all" if user_id is None else str(user_id)
+    active_part = "all" if is_active is None else str(is_active).lower()
+    return f"urls:list:{page}:{per_page}:{user_part}:{active_part}"
 
 
 def _extract_user_id(url: Url) -> int | None:
@@ -64,6 +70,10 @@ def _serialize_url(url: Url) -> dict:
 def list_urls(query: UrlListQuery):
     page, per_page = normalize_pagination(query.page, query.per_page)
     offset = (page - 1) * per_page
+    cache_key = _url_list_cache_key(page, per_page, query.user_id, query.is_active)
+    cached_payload = cache_get_json(cache_key)
+    if isinstance(cached_payload, dict):
+        return cached_payload, 200
 
     db_query = Url.select()
 
@@ -74,7 +84,9 @@ def list_urls(query: UrlListQuery):
         db_query = db_query.where(Url.is_active == query.is_active)
 
     urls = db_query.order_by(Url.id).limit(per_page).offset(offset)
-    return list_response([_serialize_url(url) for url in urls], page, per_page)
+    payload, status = list_response([_serialize_url(url) for url in urls], page, per_page)
+    cache_set_json(cache_key, payload, ttl_seconds=60)
+    return payload, status
 
 
 @urls_bp.get("/<int:url_id>", responses={200: UrlResponse, 404: ErrorEnvelope})
@@ -100,6 +112,7 @@ def create_url(body: UrlCreatePayload):
     except ServiceError as exc:
         return error_response(exc.message, exc.code, exc.status, details=exc.details)
 
+    cache_delete_prefix("urls:list:")
     return _serialize_url(url), 201
 
 
@@ -112,6 +125,7 @@ def update_url(path: UrlIdPath, body: UrlUpdatePayload):
 
     payload = _serialize_url(url)
     cache_delete(_url_cache_key(path.url_id))
+    cache_delete_prefix("urls:list:")
     return payload, 200
 
 
@@ -119,6 +133,7 @@ def update_url(path: UrlIdPath, body: UrlUpdatePayload):
 def delete_url(path: UrlIdPath):
     Url.delete().where(Url.id == path.url_id).execute()
     cache_delete(_url_cache_key(path.url_id))
+    cache_delete_prefix("urls:list:")
     return "", 204
 
 
@@ -140,6 +155,7 @@ def bulk_load_urls():
         except ServiceError as exc:
             return error_response(exc.message, exc.code, exc.status, details=exc.details)
 
+        cache_delete_prefix("urls:list:")
         return {"imported": loaded_count}, 201
 
     uploaded_file = request.files.get("file")
@@ -156,4 +172,5 @@ def bulk_load_urls():
     except ServiceError as exc:
         return error_response(exc.message, exc.code, exc.status, details=exc.details)
 
+    cache_delete_prefix("urls:list:")
     return {"imported": loaded_count}, 201

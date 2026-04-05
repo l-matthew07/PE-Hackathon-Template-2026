@@ -2,7 +2,7 @@ from flask import request
 from flask_openapi3.blueprint import APIBlueprint
 from flask_openapi3.models.tag import Tag
 
-from app.cache import cache_delete, cache_get_json, cache_set_json
+from app.cache import cache_delete, cache_delete_prefix, cache_get_json, cache_set_json
 from app.config import get_settings
 from app.lib.api import error_response, list_response
 from app.lib.utils import format_datetime, normalize_pagination
@@ -29,6 +29,10 @@ users_service = UsersService()
 def _user_cache_key(user_id: int) -> str:
     return f"user:{user_id}"
 
+
+def _user_list_cache_key(page: int, per_page: int) -> str:
+    return f"users:list:{page}:{per_page}"
+
 def _serialize_user(user: User) -> dict:
     return {
         "id": user.id,
@@ -42,8 +46,15 @@ def _serialize_user(user: User) -> dict:
 def list_users(query: PaginationQuery):
     page, per_page = normalize_pagination(query.page, query.per_page)
     offset = (page - 1) * per_page
+    cache_key = _user_list_cache_key(page, per_page)
+    cached_payload = cache_get_json(cache_key)
+    if isinstance(cached_payload, dict):
+        return cached_payload, 200
+
     users = User.select().order_by(User.id).limit(per_page).offset(offset)
-    return list_response([_serialize_user(user) for user in users], page, per_page)
+    payload, status = list_response([_serialize_user(user) for user in users], page, per_page)
+    cache_set_json(cache_key, payload, ttl_seconds=60)
+    return payload, status
 
 
 @users_bp.get("/<int:user_id>", responses={200: UserResponse, 404: ErrorEnvelope})
@@ -69,6 +80,7 @@ def create_user(body: UserCreatePayload):
     except ServiceError as exc:
         return error_response(exc.message, exc.code, exc.status, details=exc.details)
 
+    cache_delete_prefix("users:list:")
     return _serialize_user(user), 201
 
 
@@ -81,6 +93,7 @@ def update_user(path: UserIdPath, body: UserUpdatePayload):
 
     payload = _serialize_user(user)
     cache_delete(_user_cache_key(path.user_id))
+    cache_delete_prefix("users:list:")
     return payload, 200
 
 
@@ -88,6 +101,7 @@ def update_user(path: UserIdPath, body: UserUpdatePayload):
 def delete_user(path: UserIdPath):
     deleted = User.delete().where(User.id == path.user_id).execute()
     cache_delete(_user_cache_key(path.user_id))
+    cache_delete_prefix("users:list:")
     if deleted == 0:
         return "", 204
     return "", 204
@@ -111,6 +125,7 @@ def bulk_load_users():
         except ServiceError as exc:
             return error_response(exc.message, exc.code, exc.status, details=exc.details)
 
+        cache_delete_prefix("users:list:")
         return {"imported": loaded_count}, 201
 
     uploaded_file = request.files.get("file")
@@ -127,4 +142,5 @@ def bulk_load_users():
     except ServiceError as exc:
         return error_response(exc.message, exc.code, exc.status, details=exc.details)
 
+    cache_delete_prefix("users:list:")
     return {"imported": loaded_count}, 201

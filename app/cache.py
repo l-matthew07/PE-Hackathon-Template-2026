@@ -49,6 +49,19 @@ def cache_delete(key: str) -> None:
         return
 
 
+def cache_delete_prefix(prefix: str) -> None:
+    try:
+        keys = list(_get_client().scan_iter(match=f"{prefix}*"))
+        if not keys:
+            return
+        result = _get_client().delete(*keys)
+        if isinstance(result, Awaitable):
+            _logger.warning("Redis cache_delete_prefix received awaitable for prefix=%s; ensure sync Redis client is configured", prefix)
+    except RedisError as exc:
+        _logger.warning("Redis cache_delete_prefix failed for prefix=%s: %s", prefix, exc)
+        return
+
+
 def cache_get_json(key: str) -> object | None:
     raw = cache_get(key)
     if raw is None:

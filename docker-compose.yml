@@ -53,13 +53,41 @@ services:
     networks:
       - monitoring
 
-  web:
-    build: .
-    command: >-
-      uv run gunicorn -w 2 -k gthread --threads 16 -b 0.0.0.0:5000 wsgi:app --timeout 60 --backlog 2048
+  pgbouncer:
+    image: bitnami/pgbouncer:1.24.1
+    environment:
+      PGBOUNCER_DATABASE: hackathon_db
+      POSTGRESQL_HOST: db
+      POSTGRESQL_PORT: 5432
+      POSTGRESQL_DATABASE: hackathon_db
+      POSTGRESQL_USERNAME: postgres
+      POSTGRESQL_PASSWORD: postgres
+      PGBOUNCER_SET_DATABASE_USER: "yes"
+      PGBOUNCER_SET_DATABASE_PASSWORD: "yes"
+      PGBOUNCER_PORT: 6432
+      PGBOUNCER_POOL_MODE: transaction
+      PGBOUNCER_MAX_CLIENT_CONN: 1000
+      PGBOUNCER_DEFAULT_POOL_SIZE: 40
+      PGBOUNCER_MIN_POOL_SIZE: 10
+      PGBOUNCER_RESERVE_POOL_SIZE: 10
+      PGBOUNCER_RESERVE_POOL_TIMEOUT: 5
+    ports:
+      - "6432:6432"
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - monitoring
+    labels:
+      autoheal-app: true
+
+  web:
+    build: .
+    command: >-
+      uv run gunicorn -w 2 -k gthread --threads 12 -b 0.0.0.0:5000 wsgi:app --timeout 60
+    depends_on:
+      pgbouncer:
+        condition: service_started
       redis:
         condition: service_healthy
     environment:
@@ -68,11 +96,11 @@ services:
       FLASK_HOST: 0.0.0.0
       FLASK_PORT: "5000"
       DATABASE_NAME: hackathon_db
-      DATABASE_HOST: db
-      DATABASE_PORT: 5432
+      DATABASE_HOST: pgbouncer
+      DATABASE_PORT: 6432
       DATABASE_USER: postgres
       DATABASE_PASSWORD: postgres
-      DATABASE_POOL_MAX_CONNECTIONS: 40
+      DATABASE_POOL_MAX_CONNECTIONS: 30
       APP_BASE_URL: http://localhost
       REDIS_URL: redis://redis:6379/0
     expose:
