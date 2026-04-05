@@ -66,3 +66,7 @@ Verify: `curl http://localhost/health` → `{"status": "ok"}`
 | Infrastructure | nginx, Docker Compose, gunicorn |
 | Observability | Prometheus, Grafana, Loki, Alertmanager |
 | Notifications | Discord webhook relay |
+
+<img width="5550" height="3398" alt="Untitled-2026-01-16-2027" src="https://github.com/user-attachments/assets/9ca1de9e-560c-47f4-b77f-19a26ee12fe0" />
+
+
