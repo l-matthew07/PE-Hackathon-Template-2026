@@ -2041,7 +2041,7 @@
       "type": "text",
       "title": "",
       "transparent": true,
-      "gridPos": { "x": 0, "y": 35, "w": 24, "h": 2 },
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 },
       "options": {
         "mode": "html",
         "content": "<style>\n@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&family=Share+Tech+Mono&display=swap');\n\n/* Rounded panels with cyan border glow */\n.react-grid-item > div:first-child,\n[class*='panel-container'],\n.panel-container {\n  border-radius: 14px !important;\n  overflow: hidden !important;\n  border: 1px solid rgba(0, 188, 212, 0.45) !important;\n  box-shadow: 0 0 28px rgba(0, 188, 212, 0.25), 0 0 8px rgba(0, 188, 212, 0.2), inset 0 1px 0 rgba(0, 188, 212, 0.12) !important;\n}\n\n/* Orbitron for panel titles */\n[class*='panel-title'] h6,\n[class*='panel-title'] span,\n[class*='title-text'] {\n  font-family: 'Orbitron', sans-serif !important;\n  font-size: 10px !important;\n  font-weight: 600 !important;\n  letter-spacing: 0.1em !important;\n  text-transform: uppercase !important;\n  color: rgba(0, 229, 255, 0.85) !important;\n}\n\n/* Share Tech Mono for all values and body text */\nbody,\n[class*='stat-text'],\n[class*='stat-value'],\n[class*='graph-legend'],\n[class*='gauge'],\nsvg text,\n.grafana-app {\n  font-family: 'Share Tech Mono', monospace !important;\n}\n</style>"
