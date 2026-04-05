@@ -448,7 +448,7 @@
     const btnCopy = document.getElementById('btn-copy');
     const errorEl = document.getElementById('error');
 
-    const API_BASE = window.location.origin;
+    const API_BASE = `http://${window.location.host}`;
     const API_PREFIX = `${API_BASE}/api`;
 
     form.addEventListener('submit', async (e) => {

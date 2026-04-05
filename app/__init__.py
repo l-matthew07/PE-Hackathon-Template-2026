@@ -109,11 +109,15 @@ def create_app():
 
     @app.after_request
     def _after(response):
-        if g.get("skip_metrics"):
+        if getattr(g, "skip_metrics", False):
+            return response
+
+        start_time = getattr(g, "start_time", None)
+        if start_time is None:
             return response
 
         active_requests.dec()
-        duration = time.time() - g.start_time
+        duration = time.time() - start_time
         endpoint = request.endpoint or "unknown"
         http_request_duration_seconds.labels(
             method=request.method, endpoint=endpoint
