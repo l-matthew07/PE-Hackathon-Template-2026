@@ -1,4 +1,5 @@
-name: Deploy-latest
+name: Rollback
+# rollback deployment to a previous commit
 
 on:
   workflow_dispatch:
@@ -21,8 +22,7 @@ jobs:
             APP_DIR="${{ vars.VM_APP_DIR }}"
 
             cd "${APP_DIR}"
-            git fetch --all --prune
-            git checkout main
-            git reset --hard origin/main
+            git reset --hard HEAD^
             chmod +x scripts/deploy-vm.sh
             ./scripts/deploy-vm.sh
+            
