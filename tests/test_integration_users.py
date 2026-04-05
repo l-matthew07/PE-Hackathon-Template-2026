@@ -1,5 +1,7 @@
 """Integration tests for the /users endpoints."""
 
+import io
+
 from app.models.user import User
 
 
@@ -149,3 +151,22 @@ class TestDeleteUser:
         resp = client.delete(f"/users/{user_id}")
         assert resp.status_code == 204
         assert deleted_keys == [f"user:{user_id}"]
+
+
+class TestBulkUsers:
+    def test_bulk_import_users_csv(self, client):
+        csv_bytes = b"username,email\nuser_a,user_a@example.com\nuser_b,user_b@example.com\n"
+        resp = client.post(
+            "/users/bulk",
+            data={"file": (io.BytesIO(csv_bytes), "users.csv")},
+            content_type="multipart/form-data",
+        )
+
+        assert resp.status_code in (200, 201)
+        payload = resp.get_json()
+        assert payload["imported"] == 2
+        assert User.select().where(User.username.in_(["user_a", "user_b"])).count() == 2
+
+    def test_bulk_import_requires_file_field(self, client):
+        resp = client.post("/users/bulk", data={}, content_type="multipart/form-data")
+        assert resp.status_code == 400

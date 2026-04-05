@@ -38,8 +38,8 @@ class EventCreatePayload(BaseModel):
     url_id: int
     user_id: int
     event_type: str
-    timestamp: datetime
-    details: str | None = None
+    timestamp: datetime | None = None
+    details: Any | None = None
 
 
 class ShortenPayload(BaseModel):
@@ -78,11 +78,6 @@ class EventListQuery(PaginationQuery):
     user_id: int | None = None
     url_id: int | None = None
     event_type: str | None = None
-
-
-class BulkLoadBody(BaseModel):
-    file: str | None = None
-    row_count: int | None = None
 
 
 class ErrorBody(BaseModel):
@@ -153,10 +148,8 @@ class HealthResponse(BaseModel):
     status: str
 
 
-class BulkLoadResponse(BaseModel):
-    file: str
-    row_count: int | None = None
-    loaded: int
+class ImportedCountResponse(BaseModel):
+    imported: int
 
 
 def _coerce_bool(name: str, value: object) -> bool:
@@ -342,18 +335,6 @@ def parse_shorten_payload(payload: dict) -> ShortenPayload:
 
     _validate_http_url("url", original_url)
     return ShortenPayload(original_url=original_url, title=title)
-
-
-def parse_bulk_load_payload(payload: dict, default_file: str) -> BulkLoadResponse:
-    filename = str(payload.get("file") or default_file).strip() or default_file
-    raw_row_count = payload.get("row_count")
-    row_count: int | None = None
-    if raw_row_count is not None and raw_row_count != "":
-        try:
-            row_count = int(str(raw_row_count))
-        except (TypeError, ValueError):
-            raise ValidationError("row_count must be an integer", details={"fields": ["row_count"]})
-    return BulkLoadResponse(file=filename, row_count=row_count, loaded=0)
 
 
 def parse_url_list_query(payload: dict) -> UrlListQuery:

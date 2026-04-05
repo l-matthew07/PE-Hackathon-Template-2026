@@ -1,5 +1,7 @@
 import logging
 import json
+from collections.abc import Awaitable
+from typing import cast
 
 from redis import Redis
 from redis.exceptions import RedisError
@@ -20,7 +22,8 @@ def _get_client():
 
 def cache_get(key: str) -> str | None:
     try:
-        return _get_client().get(key)
+        raw = _get_client().get(key)
+        return cast(str | None, raw)
     except RedisError as exc:
         _logger.warning("Redis cache_get failed for key=%s: %s", key, exc)
         return None
@@ -28,7 +31,9 @@ def cache_get(key: str) -> str | None:
 
 def cache_set(key: str, value: str, ttl_seconds: int = 3600) -> None:
     try:
-        _get_client().setex(key, ttl_seconds, value)
+        result = _get_client().setex(key, ttl_seconds, value)
+        if isinstance(result, Awaitable):
+            _logger.warning("Redis cache_set received awaitable for key=%s; ensure sync Redis client is configured", key)
     except RedisError as exc:
         _logger.warning("Redis cache_set failed for key=%s: %s", key, exc)
         return
@@ -36,7 +41,9 @@ def cache_set(key: str, value: str, ttl_seconds: int = 3600) -> None:
 
 def cache_delete(key: str) -> None:
     try:
-        _get_client().delete(key)
+        result = _get_client().delete(key)
+        if isinstance(result, Awaitable):
+            _logger.warning("Redis cache_delete received awaitable for key=%s; ensure sync Redis client is configured", key)
     except RedisError as exc:
         _logger.warning("Redis cache_delete failed for key=%s: %s", key, exc)
         return
