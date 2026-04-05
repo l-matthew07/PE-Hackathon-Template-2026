@@ -3,7 +3,7 @@ set -euo pipefail
 
 git fetch --all --prune
 git checkout main
-git pull --ff-only origin main
+git reset --hard origin/main
 
 if [[ ! -f .env ]]; then
   echo ".env not found in $(pwd). Create it before deployment."
