@@ -38,8 +38,16 @@ class TestCreateEvent:
             "event_type": "click",
             "timestamp": "2024-06-01T12:00:00Z",
         })
-        # SQLite may or may not enforce FK constraints
-        assert resp.status_code in (201, 400, 500)
+        assert resp.status_code == 400
+
+    def test_create_invalid_url_id(self, client):
+        user, _ = self._setup_user_and_url()
+        resp = client.post("/events", json={
+            "url_id": 99999,
+            "user_id": user.id,
+            "event_type": "click",
+        })
+        assert resp.status_code == 400
 
     def test_create_without_timestamp_with_object_details(self, client):
         user, url = self._setup_user_and_url()

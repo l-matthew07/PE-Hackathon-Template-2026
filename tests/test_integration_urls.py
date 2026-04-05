@@ -1,5 +1,7 @@
 """Integration tests for the /urls CRUD endpoints."""
 
+import io
+
 from app.models.url import Url
 from app.routes.urls import urls_service
 
@@ -210,3 +212,27 @@ class TestResolveShortCode:
 
         resp = client.get("/inactive1", follow_redirects=False)
         assert resp.status_code == 404
+
+
+class TestBulkUrls:
+    def test_bulk_import_urls_csv_by_filename_json(self, client):
+        resp = client.post("/urls/bulk", json={"file": "urls.csv"})
+        assert resp.status_code == 201
+        payload = resp.get_json()
+        assert payload["imported"] > 0
+
+    def test_bulk_import_urls_csv_upload(self, client):
+        csv_bytes = (
+            b"short_code,original_url,title,is_active\n"
+            b"bulk001,https://bulk-upload-1.example.com,Upload 1,True\n"
+            b"bulk002,https://bulk-upload-2.example.com,Upload 2,False\n"
+        )
+        resp = client.post(
+            "/urls/bulk",
+            data={"file": (io.BytesIO(csv_bytes), "urls.csv")},
+            content_type="multipart/form-data",
+        )
+
+        assert resp.status_code == 201
+        payload = resp.get_json()
+        assert payload["imported"] == 2

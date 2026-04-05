@@ -4,8 +4,9 @@ import string
 from datetime import UTC, datetime
 from pathlib import Path
 import csv
+import io
 
-from peewee import IntegrityError
+from peewee import IntegrityError, SqliteDatabase
 
 from app.models.event import Event
 from app.models.url import Url
@@ -195,9 +196,83 @@ class UrlsService:
         self._sync_url_id_sequence()
         return inserted
 
+    def bulk_load_urls_upload(self, file_upload) -> int:
+        try:
+            raw_contents = file_upload.stream.read()
+        except Exception as exc:
+            from app.services.errors import ValidationError
+
+            raise ValidationError(
+                "Unable to read uploaded CSV",
+                details={"fields": ["file"], "reason": str(exc)},
+            ) from exc
+
+        if isinstance(raw_contents, bytes):
+            try:
+                text = raw_contents.decode("utf-8-sig")
+            except UnicodeDecodeError as exc:
+                from app.services.errors import ValidationError
+
+                raise ValidationError(
+                    "CSV file must be UTF-8 encoded",
+                    details={"fields": ["file"]},
+                ) from exc
+        else:
+            text = str(raw_contents)
+
+        reader = csv.DictReader(io.StringIO(text))
+        if not reader.fieldnames:
+            from app.services.errors import ValidationError
+
+            raise ValidationError("CSV file is empty", details={"fields": ["file"]})
+
+        inserted = 0
+        for row in reader:
+            short_code = (row.get("short_code") or "").strip()
+            original_url = (row.get("original_url") or "").strip()
+            if not short_code or not original_url:
+                continue
+
+            payload = {
+                "short_code": short_code,
+                "original_url": original_url,
+                "title": (row.get("title") or "").strip() or None,
+                "is_active": self._parse_bool(row.get("is_active")),
+            }
+
+            parsed_id = self._parse_optional_int(row.get("id"))
+            if parsed_id is not None:
+                payload["id"] = parsed_id
+
+            parsed_user_id = self._parse_optional_int(row.get("user_id"))
+            if parsed_user_id is not None:
+                payload["user_id"] = parsed_user_id
+
+            parsed_created_at = self._parse_datetime(row.get("created_at"))
+            if parsed_created_at is not None:
+                payload["created_at"] = parsed_created_at
+
+            parsed_updated_at = self._parse_datetime(row.get("updated_at"))
+            if parsed_updated_at is not None:
+                payload["updated_at"] = parsed_updated_at
+
+            try:
+                result = Url.insert(payload).on_conflict_ignore().execute()
+                if result:
+                    inserted += 1
+            except IntegrityError:
+                continue
+
+        self._sync_url_id_sequence()
+        return inserted
+
     @staticmethod
     def _sync_url_id_sequence() -> None:
         from app.database import db
+
+        db_obj = getattr(db, "obj", None)
+        if isinstance(db_obj, SqliteDatabase):
+            return
 
         db.execute_sql(
             """

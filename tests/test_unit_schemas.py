@@ -183,3 +183,21 @@ class TestParseEventCreate:
                 "event_type": "click",
                 "timestamp": "not-a-date",
             })
+
+    def test_details_string_raises(self):
+        with pytest.raises(ValidationError):
+            parse_event_create({
+                "url_id": 1,
+                "user_id": 1,
+                "event_type": "click",
+                "details": "not-an-object",
+            })
+
+    def test_details_object_is_accepted(self):
+        result = parse_event_create({
+            "url_id": 1,
+            "user_id": 1,
+            "event_type": "click",
+            "details": {"referrer": "https://example.com"},
+        })
+        assert result.details is not None

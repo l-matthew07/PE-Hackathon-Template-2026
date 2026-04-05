@@ -83,13 +83,19 @@ class UsersService:
         return inserted
 
     def _insert_rows(self, reader: csv.DictReader) -> int:
-        inserted = 0
+        imported = 0
 
-        for row in reader:
+        for row_index, row in enumerate(reader, start=2):
             username = (row.get("username") or "").strip()
             email = (row.get("email") or "").strip()
             if not username or not email:
-                continue
+                raise ValidationError(
+                    "Each row must include username and email",
+                    details={"fields": ["username", "email"], "row": row_index},
+                )
+
+            # Keep bulk imports consistent with single-user creation validation.
+            parse_user_create({"username": username, "email": email})
 
             payload = {
                 "username": username,
@@ -104,15 +110,29 @@ class UsersService:
             if parsed_created_at is not None:
                 payload["created_at"] = parsed_created_at
 
-            # Duplicate rows can appear on repeated loads; skip conflicts.
-            try:
-                result = User.insert(payload).on_conflict_ignore().execute()
-                if result:
-                    inserted += 1
-            except IntegrityError:
+            existing = User.get_or_none(User.username == username)
+            if existing is not None:
+                existing.email = email
+                if parsed_created_at is not None:
+                    existing.created_at = parsed_created_at
+                existing.save()
+                imported += 1
                 continue
 
-        return inserted
+            try:
+                User.insert(payload).execute()
+                imported += 1
+            except IntegrityError:
+                # Fall back to auto-generated id if the CSV id conflicts but username is new.
+                payload.pop("id", None)
+                try:
+                    User.insert(payload).execute()
+                    imported += 1
+                except IntegrityError as exc:
+                    classify_user_integrity_error(exc)
+                    raise
+
+        return imported
 
     @staticmethod
     def _parse_optional_int(value: object) -> int | None:
