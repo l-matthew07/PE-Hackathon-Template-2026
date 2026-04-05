@@ -16,6 +16,8 @@ dependencies = [
     "redis>=6.0",
     "flask-openapi3[scalar]>=4.3.1",
     "prometheus-flask-exporter>=0.23",
+    "Flask-Limiter[redis]>=4.0",
+    "pytest-cov>=7.1.0",
 ]
 
 [project.optional-dependencies]

@@ -10,10 +10,14 @@ from flask_openapi3.openapi import OpenAPI
 from prometheus_flask_exporter import PrometheusMetrics
 from werkzeug.exceptions import HTTPException
 
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
 from app.config import get_settings
 from app.database import db, init_db
 from app.lib.api import error_response
 from app.logging_config import setup_logging
+from app.cache import cache_get, cache_set
 from app.routes import register_routes
 
 _logger = logging.getLogger(__name__)
@@ -43,9 +47,19 @@ def create_app():
         default_labels={"instance": os.environ.get("HOSTNAME", "unknown")},
     )
 
+    settings = get_settings()
+    limiter = Limiter(
+        get_remote_address,
+        app=app,
+        default_limits=["200 per minute"],
+        storage_uri=settings.redis_url,
+    )
+    app.limiter = limiter
+
     init_db(app)
 
     from app import models  # noqa: F401 - registers models with Peewee
+    from app.models.alert import Alert
     from app.models.event import Event
     from app.models.url import Url
     from app.models.user import User
@@ -56,7 +70,7 @@ def create_app():
         db.execute_sql("SELECT pg_advisory_lock(%s)", (STARTUP_SCHEMA_LOCK_ID,))
         try:
             # Keep startup resilient in environments where migrations were not run yet.
-            db.create_tables([User, Url, Event], safe=True)
+            db.create_tables([User, Url, Event, Alert], safe=True)
         finally:
             db.execute_sql("SELECT pg_advisory_unlock(%s)", (STARTUP_SCHEMA_LOCK_ID,))
     finally:
@@ -138,12 +152,34 @@ def create_app():
     def test_error():
         return "boom", 500
 
+    @app.route("/test-slow")
+    def test_slow():
+        delay = min(int(request.args.get("delay", 3)), 30)
+        time.sleep(delay)
+        return jsonify(status="slow", delay=delay)
+
     @app.route("/health")
+    @limiter.exempt
     def health():
         return jsonify(status="ok")
 
     @app.route("/docs")
     def scalar_docs():
         return redirect("/openapi/scalar", code=302) # slightly cursed but works
+
+    @app.route("/<string:short_code>")
+    def resolve_short_code(short_code: str):
+        cache_key = f"short_code:{short_code}"
+        original_url = cache_get(cache_key)
+
+        if original_url is None:
+            url = Url.get_or_none((Url.short_code == short_code) & (Url.is_active == True))
+            if url is None:
+                return error_response("URL not found", "NOT_FOUND", 404)
+
+            original_url = url.original_url
+            cache_set(cache_key, original_url, ttl_seconds=settings.cache_ttl_seconds)
+
+        return redirect(original_url, code=302)
 
     return app

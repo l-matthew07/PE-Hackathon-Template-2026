@@ -20,6 +20,9 @@ class Settings:
     database_port: int
     database_user: str
     database_password: str
+    database_pool_max_connections: int
+    database_pool_stale_timeout: int
+    database_pool_timeout: int
     redis_url: str
     app_base_url: str | None
     default_per_page: int
@@ -44,6 +47,9 @@ def get_settings() -> Settings:
         database_port=max(1, _env_int("DATABASE_PORT", 5432)),
         database_user=os.environ.get("DATABASE_USER", "postgres"),
         database_password=os.environ.get("DATABASE_PASSWORD", "postgres"),
+        database_pool_max_connections=max(1, _env_int("DATABASE_POOL_MAX_CONNECTIONS", 10)),
+        database_pool_stale_timeout=max(1, _env_int("DATABASE_POOL_STALE_TIMEOUT", 300)),
+        database_pool_timeout=max(1, _env_int("DATABASE_POOL_TIMEOUT", 10)),
         redis_url=os.environ.get("REDIS_URL", "redis://localhost:6379/0"),
         app_base_url=os.environ.get("APP_BASE_URL"),
         default_per_page=default_per_page,

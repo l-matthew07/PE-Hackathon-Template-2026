@@ -16,6 +16,8 @@ services:
       retries: 10
     networks:
       - monitoring
+    labels:
+      autoheal-app: true
 
   redis:
     image: redis:7-alpine
@@ -31,6 +33,8 @@ services:
       retries: 10
     networks:
       - monitoring
+    labels:
+      autoheal-app: true
 
   migrate:
     build: .
@@ -67,12 +71,13 @@ services:
       DATABASE_PORT: 5432
       DATABASE_USER: postgres
       DATABASE_PASSWORD: postgres
+      DATABASE_POOL_MAX_CONNECTIONS: 10
       APP_BASE_URL: http://localhost
       REDIS_URL: redis://redis:6379/0
     expose:
       - "5000"
     deploy:
-      replicas: 2
+      replicas: 3
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:5000/health" ]
       interval: 10s
@@ -80,6 +85,8 @@ services:
       retries: 5
     networks:
       - monitoring
+    labels:
+      autoheal-app: true
 
   nginx:
     image: nginx:1.27-alpine
@@ -90,13 +97,16 @@ services:
       - "80:80"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./website:/usr/share/nginx/html:ro
     healthcheck:
-      test: [ "CMD", "wget", "-qO-", "http://localhost/health" ]
+      test: [ "CMD", "wget", "-qO-", "http://localhost/api/health" ]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
       - monitoring
+    labels:
+      autoheal-app: true
 
   node_exporter:
     image: prom/node-exporter:v1.8.0
@@ -162,6 +172,17 @@ services:
       retries: 10
     networks:
       - monitoring
+  autoheal:
+    deploy:
+      replicas: 1
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: autoheal-app
+    image: willfarrell/autoheal:latest
+    network_mode: none
+    restart: always
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock
 
   promtail:
     image: grafana/promtail:2.9.6

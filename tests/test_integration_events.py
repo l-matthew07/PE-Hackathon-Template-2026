@@ -41,9 +41,31 @@ class TestCreateEvent:
         # SQLite may or may not enforce FK constraints
         assert resp.status_code in (201, 400, 500)
 
+    def test_create_without_timestamp_with_object_details(self, client):
+        user, url = self._setup_user_and_url()
+        resp = client.post(
+            "/events",
+            json={
+                "url_id": url.id,
+                "user_id": user.id,
+                "event_type": "click",
+                "details": {"referrer": "https://google.com"},
+            },
+        )
+        assert resp.status_code == 201
+        data = resp.get_json()
+        assert data["event_type"] == "click"
+        assert data["details"]["referrer"] == "https://google.com"
+
 
 class TestListEvents:
     def test_list_empty(self, client):
         resp = client.get("/events")
         assert resp.status_code == 200
         assert resp.get_json()["data"] == []
+
+
+class TestBulkEvents:
+    def test_bulk_route_removed(self, client):
+        resp = client.post("/events/bulk", json={})
+        assert resp.status_code == 404

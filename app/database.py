@@ -1,6 +1,7 @@
 import logging
 
-from peewee import DatabaseProxy, Model, PostgresqlDatabase
+from peewee import DatabaseProxy, Model
+from playhouse.pool import PooledPostgresqlDatabase
 
 from app.config import get_settings
 
@@ -16,12 +17,15 @@ class BaseModel(Model):
 
 def init_db(app):
     settings = get_settings()
-    database = PostgresqlDatabase(
+    database = PooledPostgresqlDatabase(
         settings.database_name,
         host=settings.database_host,
         port=settings.database_port,
         user=settings.database_user,
         password=settings.database_password,
+        max_connections=settings.database_pool_max_connections,
+        stale_timeout=settings.database_pool_stale_timeout,
+        timeout=settings.database_pool_timeout,
     )
     try:
         db.initialize(database)
@@ -34,9 +38,10 @@ def init_db(app):
     from app.models.user import User
     from app.models.url import Url
     from app.models.event import Event
+    from app.models.alert import Alert
     with database:
         try:
-            database.create_tables([User, Url, Event], safe=True)
+            database.create_tables([User, Url, Event, Alert], safe=True)
         except Exception:
             pass  # another worker already created the tables — safe to ignore
 
@@ -44,9 +49,7 @@ def init_db(app):
 
     @app.before_request
     def _db_connect():
-        if not db.is_closed():
-            db.close()
-        db.connect()
+        db.connect(reuse_if_open=True)
         db_pool_connections_active.inc()
 
     @app.teardown_appcontext

@@ -5,6 +5,7 @@ def register_routes(app):
         from app.routes.products import products_bp
         app.register_blueprint(products_bp)
     """
+    from app.routes.alerts import alerts_bp
     from app.routes.events import events_bp
     from app.routes.metrics import metrics_bp
     from app.routes.urls import urls_bp
@@ -13,4 +14,8 @@ def register_routes(app):
     app.register_api(users_bp)
     app.register_api(urls_bp)
     app.register_api(events_bp)
+    app.register_api(alerts_bp)
     app.register_blueprint(metrics_bp)
+
+    if hasattr(app, "limiter"):
+        app.limiter.exempt(metrics_bp)

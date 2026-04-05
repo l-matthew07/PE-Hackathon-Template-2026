@@ -192,3 +192,21 @@ class TestDeleteUrl:
         resp = client.delete(f"/urls/{url_id}")
         assert resp.status_code == 204
         assert deleted_keys == [f"url:{url_id}"]
+
+
+class TestResolveShortCode:
+    def test_resolve_existing_short_code_redirects(self, client):
+        created = client.post("/urls", json={"original_url": "https://resolve-me.com", "short_code": "resolve1"})
+        assert created.status_code == 201
+
+        resp = client.get("/resolve1", follow_redirects=False)
+        assert resp.status_code == 302
+        assert resp.headers["Location"] == "https://resolve-me.com"
+
+    def test_resolve_inactive_short_code_returns_404(self, client):
+        created = client.post("/urls", json={"original_url": "https://inactive-me.com", "short_code": "inactive1"})
+        url_id = created.get_json()["id"]
+        client.put(f"/urls/{url_id}", json={"is_active": False})
+
+        resp = client.get("/inactive1", follow_redirects=False)
+        assert resp.status_code == 404

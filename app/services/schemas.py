@@ -1,6 +1,6 @@
 import json
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlparse
 
@@ -38,8 +38,8 @@ class EventCreatePayload(BaseModel):
     url_id: int
     user_id: int
     event_type: str
-    timestamp: datetime
-    details: str | None = None
+    timestamp: datetime | None = None
+    details: Any | None = None
 
 
 class ShortenPayload(BaseModel):
@@ -78,11 +78,6 @@ class EventListQuery(PaginationQuery):
     user_id: int | None = None
     url_id: int | None = None
     event_type: str | None = None
-
-
-class BulkLoadBody(BaseModel):
-    file: str | None = None
-    row_count: int | None = None
 
 
 class ErrorBody(BaseModel):
@@ -151,6 +146,51 @@ class ShortenResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str
+
+
+class ImportedCountResponse(BaseModel):
+    imported: int
+# --- Alerts ---
+
+class AlertCreatePayload(BaseModel):
+    alert_name: str
+    severity: str = "warning"
+    summary: str | None = None
+    source: str | None = None
+    notes: str | None = None
+
+
+class AlertUpdatePayload(BaseModel):
+    status: str | None = None
+    notes: str | None = None
+    acknowledged_by: str | None = None
+
+
+class AlertIdPath(BaseModel):
+    alert_id: int
+
+
+class AlertListQuery(BaseModel):
+    status: str | None = None
+    severity: str | None = None
+
+
+class AlertResponse(BaseModel):
+    id: int
+    alert_name: str
+    severity: str
+    status: str
+    summary: str | None
+    source: str | None
+    notes: str | None
+    fired_at: str | None
+    acknowledged_at: str | None
+    resolved_at: str | None
+    acknowledged_by: str | None
+
+
+class AlertListResponse(BaseModel):
+    data: list[AlertResponse]
 
 
 class BulkLoadResponse(BaseModel):
@@ -308,7 +348,7 @@ def parse_event_create(payload: dict) -> EventCreatePayload:
         except ValueError:
             raise ValidationError("timestamp must be ISO-8601", details={"fields": ["timestamp"]})
     else:
-        timestamp = datetime.utcnow()
+        timestamp = datetime.now(UTC)
 
     details_raw = payload.get("details")
     details: str | None
@@ -342,18 +382,6 @@ def parse_shorten_payload(payload: dict) -> ShortenPayload:
 
     _validate_http_url("url", original_url)
     return ShortenPayload(original_url=original_url, title=title)
-
-
-def parse_bulk_load_payload(payload: dict, default_file: str) -> BulkLoadResponse:
-    filename = str(payload.get("file") or default_file).strip() or default_file
-    raw_row_count = payload.get("row_count")
-    row_count: int | None = None
-    if raw_row_count is not None and raw_row_count != "":
-        try:
-            row_count = int(str(raw_row_count))
-        except (TypeError, ValueError):
-            raise ValidationError("row_count must be an integer", details={"fields": ["row_count"]})
-    return BulkLoadResponse(file=filename, row_count=row_count, loaded=0)
 
 
 def parse_url_list_query(payload: dict) -> UrlListQuery:
