@@ -10,7 +10,7 @@ if [[ ! -f .env ]]; then
   exit 1
 fi
 
-docker compose --profile setup run --rm migrate
+#docker compose --profile setup run --rm migrate
 #docker compose run --rm --no-deps web uv run scripts/seed.py
 
 docker compose up -d --remove-orphans
