@@ -53,10 +53,17 @@ message_to_alert: dict[int, str] = {}
 
 
 def _serialize_state(state: dict) -> dict:
-    """Convert state to JSON-serializable form."""
-    s = state.copy()
-    if isinstance(s.get("first_seen"), datetime):
-        s["first_seen"] = s["first_seen"].isoformat()
+    """Convert state to Redis-compatible form (no bools or None)."""
+    s = {}
+    for k, v in state.items():
+        if isinstance(v, datetime):
+            s[k] = v.isoformat()
+        elif isinstance(v, bool):
+            s[k] = str(v)
+        elif v is None:
+            s[k] = ""
+        else:
+            s[k] = v
     return s
 
 
