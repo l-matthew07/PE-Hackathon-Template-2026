@@ -18,16 +18,13 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
 from app.config import get_settings
-from app.database import db, init_db
+from app.database import init_db
 from app.lib.api import error_response
 from app.logging_config import setup_logging
 from app.cache import cache_get, cache_set
 from app.routes import register_routes
 
 _logger = logging.getLogger(__name__)
-
-
-STARTUP_SCHEMA_LOCK_ID = 2 # random number to lock db on startup
 
 
 def _resolve_limiter_storage_uri(redis_url: str) -> str:
@@ -47,6 +44,9 @@ def _resolve_limiter_storage_uri(redis_url: str) -> str:
 def create_app():
     load_dotenv()
     get_settings()
+
+    # Prometheus multiprocess mode needs the backing directory to exist at runtime.
+    os.makedirs(os.environ.get("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc"), exist_ok=True)
 
     info = Info(
         title="MLH PE Hackathon API",
@@ -77,24 +77,8 @@ def create_app():
 
     init_db(app)
 
-    from app import models  # noqa: F401 - registers models with Peewee
-    from app.models.alert import Alert
     from app.models.event import Event
     from app.models.url import Url
-    from app.models.user import User
-
-    db.connect(reuse_if_open=True)
-    try:
-        # Prevent startup races when multiple gunicorn workers/replicas boot simultaneously.
-        db.execute_sql("SELECT pg_advisory_lock(%s)", (STARTUP_SCHEMA_LOCK_ID,))
-        try:
-            # Keep startup resilient in environments where migrations were not run yet.
-            db.create_tables([User, Url, Event, Alert], safe=True)
-        finally:
-            db.execute_sql("SELECT pg_advisory_unlock(%s)", (STARTUP_SCHEMA_LOCK_ID,))
-    finally:
-        if not db.is_closed():
-            db.close()
 
     register_routes(app)
 
