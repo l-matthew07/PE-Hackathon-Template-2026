@@ -151,6 +151,12 @@ def create_app():
     def test_error():
         return "boom", 500
 
+    @app.route("/test-slow")
+    def test_slow():
+        delay = min(int(request.args.get("delay", 3)), 30)
+        time.sleep(delay)
+        return jsonify(status="slow", delay=delay)
+
     @app.route("/health")
     @limiter.exempt
     def health():
