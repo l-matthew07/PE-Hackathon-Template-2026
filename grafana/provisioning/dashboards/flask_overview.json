@@ -1944,11 +1944,104 @@
       ]
     },
     {
+      "id": 70,
+      "type": "row",
+      "title": "Simulate",
+      "gridPos": { "x": 0, "y": 34, "w": 24, "h": 1 },
+      "collapsed": true,
+      "panels": [
+        {
+          "id": 71,
+          "type": "marcusolsson-dynamictext-panel",
+          "title": "Error & Load Simulation",
+          "description": "Generate errors, traffic spikes, and concurrent user load against the running app. Watch the panels above react in real time.",
+          "gridPos": { "x": 0, "y": 1, "w": 12, "h": 12 },
+          "datasource": { "type": "datasource", "uid": "-- Dashboard --" },
+          "targets": [{ "refId": "A" }],
+          "options": {
+            "content": "",
+            "defaultContent": "<div id=\"sim-root\"></div>",
+            "javascript": "const BASE = window.location.origin;\nconst root = htmlNode.querySelector('#sim-root') || htmlNode;\nroot.innerHTML = '';\n\nconst css = document.createElement('style');\ncss.textContent = `\n  .sim-card { background: rgba(0,188,212,0.06); border: 1px solid rgba(0,188,212,0.25); border-radius: 10px; padding: 14px; margin-bottom: 10px; }\n  .sim-card h4 { margin: 0 0 4px; font-size: 13px; color: #00e5ff; font-family: 'Orbitron', sans-serif; letter-spacing: 0.05em; }\n  .sim-card p { margin: 0 0 8px; font-size: 11px; color: #888; }\n  .sim-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }\n  .sim-btn { background: #00bcd4; color: #000; border: none; border-radius: 6px; padding: 6px 14px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: 'Share Tech Mono', monospace; }\n  .sim-btn:hover { background: #00e5ff; }\n  .sim-btn.red { background: #e53935; }\n  .sim-btn.red:hover { background: #ff5252; }\n  .sim-btn.amber { background: #ff9800; }\n  .sim-btn.amber:hover { background: #ffb74d; }\n  .sim-btn:disabled { opacity: 0.4; cursor: not-allowed; }\n  .sim-slider { width: 120px; accent-color: #00bcd4; }\n  .sim-label { font-size: 11px; color: #aaa; min-width: 80px; font-family: 'Share Tech Mono', monospace; }\n  .sim-val { font-size: 11px; color: #00e5ff; min-width: 30px; text-align: right; font-family: 'Share Tech Mono', monospace; }\n  .sim-log { background: #0a0a0a; border: 1px solid #222; border-radius: 8px; padding: 10px; margin-top: 10px; max-height: 260px; overflow-y: auto; font-size: 11px; font-family: 'Share Tech Mono', monospace; color: #ccc; }\n  .sim-log .entry { padding: 3px 0; border-bottom: 1px solid #1a1a1a; }\n  .sim-log .ts { color: #555; margin-right: 6px; }\n  .sim-log .ok { color: #00e5ff; }\n  .sim-log .err { color: #e53935; }\n  .sim-log .warn { color: #ff9800; }\n`;\nroot.appendChild(css);\n\nconst log = [];\nfunction addLog(msg, cls) {\n  const ts = new Date().toLocaleTimeString();\n  log.unshift({ ts, msg, cls: cls || 'ok' });\n  if (log.length > 50) log.length = 50;\n  renderLog();\n}\nlet logEl;\nfunction renderLog() {\n  if (!logEl) return;\n  logEl.innerHTML = log.map(e => `<div class=\\\"entry\\\"><span class=\\\"ts\\\">${e.ts}</span><span class=\\\"${e.cls}\\\">${e.msg}</span></div>`).join('');\n}\n\n// ── Single Error ──\nconst c1 = document.createElement('div'); c1.className = 'sim-card';\nc1.innerHTML = '<h4>TRIGGER ERROR</h4><p>Hit /test-error once to generate a 500 response</p>';\nconst b1 = document.createElement('button'); b1.className = 'sim-btn red'; b1.textContent = 'Fire 500';\nb1.onclick = async () => {\n  b1.disabled = true;\n  try {\n    const r = await fetch(BASE + '/test-error');\n    addLog(`/test-error → ${r.status}`, r.status >= 500 ? 'err' : 'ok');\n  } catch(e) { addLog(`Error: ${e.message}`, 'err'); }\n  b1.disabled = false;\n};\nc1.appendChild(b1);\nroot.appendChild(c1);\n\n// ── Error Burst ──\nconst c2 = document.createElement('div'); c2.className = 'sim-card';\nc2.innerHTML = '<h4>ERROR BURST</h4><p>Fire N requests to /test-error to spike the error rate metric</p>';\nconst r2 = document.createElement('div'); r2.className = 'sim-row';\nlet burstCount = 20;\nr2.innerHTML = `<span class=\\\"sim-label\\\">Count</span><input type=\\\"range\\\" class=\\\"sim-slider\\\" min=\\\"5\\\" max=\\\"200\\\" value=\\\"20\\\"><span class=\\\"sim-val\\\">20</span>`;\nconst sl2 = r2.querySelector('input');\nconst sv2 = r2.querySelector('.sim-val');\nsl2.oninput = () => { burstCount = +sl2.value; sv2.textContent = sl2.value; };\nc2.appendChild(r2);\nconst b2 = document.createElement('button'); b2.className = 'sim-btn red'; b2.textContent = 'Fire Burst';\nb2.onclick = async () => {\n  b2.disabled = true; b2.textContent = 'Firing...';\n  let ok = 0, fail = 0;\n  for (let i = 0; i < burstCount; i += 10) {\n    const batch = Math.min(10, burstCount - i);\n    const ps = Array.from({length: batch}, () => fetch(BASE + '/test-error').then(r => r.status).catch(() => 0));\n    const res = await Promise.all(ps);\n    res.forEach(s => s >= 500 ? fail++ : ok++);\n  }\n  addLog(`Burst: ${fail} errors / ${fail+ok} total`, fail > 0 ? 'err' : 'ok');\n  b2.disabled = false; b2.textContent = 'Fire Burst';\n};\nc2.appendChild(b2);\nroot.appendChild(c2);\n\n// ── Traffic Spike ──\nconst c3 = document.createElement('div'); c3.className = 'sim-card';\nc3.innerHTML = '<h4>TRAFFIC SPIKE</h4><p>Instant burst of concurrent GET /health requests</p>';\nconst r3 = document.createElement('div'); r3.className = 'sim-row';\nlet spikeCount = 50;\nr3.innerHTML = `<span class=\\\"sim-label\\\">Requests</span><input type=\\\"range\\\" class=\\\"sim-slider\\\" min=\\\"10\\\" max=\\\"500\\\" value=\\\"50\\\"><span class=\\\"sim-val\\\">50</span>`;\nconst sl3 = r3.querySelector('input');\nconst sv3 = r3.querySelector('.sim-val');\nsl3.oninput = () => { spikeCount = +sl3.value; sv3.textContent = sl3.value; };\nc3.appendChild(r3);\nconst b3 = document.createElement('button'); b3.className = 'sim-btn amber'; b3.textContent = 'Spike';\nb3.onclick = async () => {\n  b3.disabled = true; b3.textContent = 'Spiking...';\n  const t0 = Date.now();\n  const ps = Array.from({length: spikeCount}, () => fetch(BASE + '/health').then(r => r.status).catch(() => 0));\n  const res = await Promise.all(ps);\n  const ms = Date.now() - t0;\n  const ok = res.filter(s => s === 200).length;\n  addLog(`Spike: ${ok}/${res.length} ok in ${ms}ms (${(res.length/(ms/1000)).toFixed(0)} rps)`, 'ok');\n  b3.disabled = false; b3.textContent = 'Spike';\n};\nc3.appendChild(b3);\nroot.appendChild(c3);\n\n// ── Concurrent Users ──\nconst c4 = document.createElement('div'); c4.className = 'sim-card';\nc4.innerHTML = '<h4>CONCURRENT USERS</h4><p>Simulate N users hitting random endpoints for a set duration</p>';\nconst r4a = document.createElement('div'); r4a.className = 'sim-row';\nlet userCount = 10;\nr4a.innerHTML = `<span class=\\\"sim-label\\\">Users</span><input type=\\\"range\\\" class=\\\"sim-slider\\\" min=\\\"1\\\" max=\\\"200\\\" value=\\\"10\\\"><span class=\\\"sim-val\\\">10</span>`;\nconst sl4a = r4a.querySelector('input');\nconst sv4a = r4a.querySelector('.sim-val');\nsl4a.oninput = () => { userCount = +sl4a.value; sv4a.textContent = sl4a.value; };\nc4.appendChild(r4a);\nconst r4b = document.createElement('div'); r4b.className = 'sim-row';\nlet durSec = 5;\nr4b.innerHTML = `<span class=\\\"sim-label\\\">Duration (s)</span><input type=\\\"range\\\" class=\\\"sim-slider\\\" min=\\\"1\\\" max=\\\"30\\\" value=\\\"5\\\"><span class=\\\"sim-val\\\">5</span>`;\nconst sl4b = r4b.querySelector('input');\nconst sv4b = r4b.querySelector('.sim-val');\nsl4b.oninput = () => { durSec = +sl4b.value; sv4b.textContent = sl4b.value; };\nc4.appendChild(r4b);\nconst b4 = document.createElement('button'); b4.className = 'sim-btn'; b4.textContent = 'Start Load';\nb4.onclick = async () => {\n  b4.disabled = true; b4.textContent = `Running ${durSec}s...`;\n  const endpoints = ['/health', '/users?per_page=5', '/urls?per_page=5', '/events?per_page=5'];\n  const end = Date.now() + durSec * 1000;\n  let total = 0, errs = 0;\n  const lats = [];\n  const work = Array.from({length: userCount}, async () => {\n    while (Date.now() < end) {\n      const ep = endpoints[Math.floor(Math.random() * endpoints.length)];\n      const t0 = Date.now();\n      try {\n        const r = await fetch(BASE + ep);\n        lats.push(Date.now() - t0);\n        total++;\n        if (r.status >= 500) errs++;\n      } catch { errs++; total++; }\n    }\n  });\n  await Promise.all(work);\n  lats.sort((a,b) => a - b);\n  const p50 = lats[Math.floor(lats.length * 0.5)] || 0;\n  const p95 = lats[Math.floor(lats.length * 0.95)] || 0;\n  const rps = (total / durSec).toFixed(0);\n  const errPct = total ? ((errs/total)*100).toFixed(1) : '0';\n  addLog(`Load: ${userCount} users, ${total} reqs, ${rps} rps, p50=${p50}ms p95=${p95}ms, err=${errPct}%`, errs > 0 ? 'warn' : 'ok');\n  b4.disabled = false; b4.textContent = 'Start Load';\n};\nc4.appendChild(b4);\nroot.appendChild(c4);\n\n// ── Fire Alert ──\nconst c5 = document.createElement('div'); c5.className = 'sim-card';\nc5.innerHTML = '<h4>FIRE ALERT</h4><p>Create an alert record in the Flask app database</p>';\nconst r5 = document.createElement('div'); r5.className = 'sim-row';\nr5.innerHTML = `<input placeholder=\\\"Alert name\\\" style=\\\"background:#111;border:1px solid #333;color:#eee;padding:4px 8px;border-radius:4px;font-size:11px;width:140px;font-family:'Share Tech Mono',monospace\\\" id=\\\"sim-alert-name\\\"><select style=\\\"background:#111;border:1px solid #333;color:#eee;padding:4px 8px;border-radius:4px;font-size:11px;font-family:'Share Tech Mono',monospace\\\" id=\\\"sim-alert-sev\\\"><option value=\\\"warning\\\">warning</option><option value=\\\"critical\\\">critical</option></select><input placeholder=\\\"Summary (optional)\\\" style=\\\"background:#111;border:1px solid #333;color:#eee;padding:4px 8px;border-radius:4px;font-size:11px;width:200px;font-family:'Share Tech Mono',monospace\\\" id=\\\"sim-alert-sum\\\">`;\nc5.appendChild(r5);\nconst b5 = document.createElement('button'); b5.className = 'sim-btn red'; b5.textContent = 'Fire Alert';\nb5.onclick = async () => {\n  const name = root.querySelector('#sim-alert-name').value.trim();\n  if (!name) { addLog('Alert name required', 'err'); return; }\n  const sev = root.querySelector('#sim-alert-sev').value;\n  const sum = root.querySelector('#sim-alert-sum').value.trim();\n  b5.disabled = true;\n  try {\n    const r = await fetch(BASE + '/alerts', {\n      method: 'POST',\n      headers: {'Content-Type': 'application/json'},\n      body: JSON.stringify({ alert_name: name, severity: sev, summary: sum || undefined, source: 'grafana-simulate' })\n    });\n    const d = await r.json();\n    addLog(`Alert fired: ${name} (${sev}) → id=${d.id}`, 'ok');\n    root.querySelector('#sim-alert-name').value = '';\n    root.querySelector('#sim-alert-sum').value = '';\n  } catch(e) { addLog(`Alert error: ${e.message}`, 'err'); }\n  b5.disabled = false;\n};\nc5.appendChild(b5);\nroot.appendChild(c5);\n\n// ── Log ──\nlogEl = document.createElement('div'); logEl.className = 'sim-log';\nlogEl.innerHTML = '<div class=\\\"entry\\\"><span class=\\\"ts\\\">' + new Date().toLocaleTimeString() + '</span><span class=\\\"ok\\\">Simulation panel ready</span></div>';\nroot.appendChild(logEl);",
+            "editor": { "format": "auto", "language": "javascript" },
+            "everyRow": false,
+            "helpers": "",
+            "renderMode": "everyRow",
+            "status": "none",
+            "wrap": true
+          }
+        },
+        {
+          "id": 72,
+          "type": "timeseries",
+          "title": "Live Error Rate (watch during simulation)",
+          "description": "5xx error fraction — watch this spike when you fire error bursts.",
+          "gridPos": { "x": 12, "y": 1, "w": 12, "h": 6 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "sum(rate(http_requests_total{status_code=~\"5..\"}[1m])) / clamp_min(sum(rate(http_requests_total[1m])), 0.001) * 100",
+              "legendFormat": "Error %",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "color": { "mode": "thresholds" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "#00bcd4", "value": null },
+                  { "color": "#ff9800", "value": 1 },
+                  { "color": "#e53935", "value": 5 }
+                ]
+              },
+              "custom": { "fillOpacity": 20, "gradientMode": "hue", "lineWidth": 2, "showPoints": "always", "pointSize": 4 }
+            }
+          },
+          "options": { "tooltip": { "mode": "single" } }
+        },
+        {
+          "id": 73,
+          "type": "timeseries",
+          "title": "Live Request Rate (watch during simulation)",
+          "description": "Requests per second — watch this spike when you run traffic spikes or concurrent users.",
+          "gridPos": { "x": 12, "y": 7, "w": 12, "h": 6 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "sum(rate(http_requests_total[1m]))",
+              "legendFormat": "Req/s",
+              "refId": "A"
+            },
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[1m])) by (le)) * 1000",
+              "legendFormat": "p95 (ms)",
+              "refId": "B"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "custom": { "fillOpacity": 15, "gradientMode": "hue", "lineWidth": 2, "showPoints": "always", "pointSize": 4, "axisSoftMin": 0 }
+            }
+          },
+          "options": {
+            "tooltip": { "mode": "multi" },
+            "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true }
+          }
+        }
+      ]
+    },
+    {
       "id": 30,
       "type": "text",
       "title": "",
       "transparent": true,
-      "gridPos": { "x": 0, "y": 34, "w": 24, "h": 2 },
+      "gridPos": { "x": 0, "y": 35, "w": 24, "h": 2 },
       "options": {
         "mode": "html",
         "content": "<style>\n@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&family=Share+Tech+Mono&display=swap');\n\n/* Rounded panels with cyan border glow */\n.react-grid-item > div:first-child,\n[class*='panel-container'],\n.panel-container {\n  border-radius: 14px !important;\n  overflow: hidden !important;\n  border: 1px solid rgba(0, 188, 212, 0.45) !important;\n  box-shadow: 0 0 28px rgba(0, 188, 212, 0.25), 0 0 8px rgba(0, 188, 212, 0.2), inset 0 1px 0 rgba(0, 188, 212, 0.12) !important;\n}\n\n/* Orbitron for panel titles */\n[class*='panel-title'] h6,\n[class*='panel-title'] span,\n[class*='title-text'] {\n  font-family: 'Orbitron', sans-serif !important;\n  font-size: 10px !important;\n  font-weight: 600 !important;\n  letter-spacing: 0.1em !important;\n  text-transform: uppercase !important;\n  color: rgba(0, 229, 255, 0.85) !important;\n}\n\n/* Share Tech Mono for all values and body text */\nbody,\n[class*='stat-text'],\n[class*='stat-value'],\n[class*='graph-legend'],\n[class*='gauge'],\nsvg text,\n.grafana-app {\n  font-family: 'Share Tech Mono', monospace !important;\n}\n</style>"

@@ -150,6 +150,53 @@ class HealthResponse(BaseModel):
 
 class ImportedCountResponse(BaseModel):
     imported: int
+# --- Alerts ---
+
+class AlertCreatePayload(BaseModel):
+    alert_name: str
+    severity: str = "warning"
+    summary: str | None = None
+    source: str | None = None
+    notes: str | None = None
+
+
+class AlertUpdatePayload(BaseModel):
+    status: str | None = None
+    notes: str | None = None
+    acknowledged_by: str | None = None
+
+
+class AlertIdPath(BaseModel):
+    alert_id: int
+
+
+class AlertListQuery(BaseModel):
+    status: str | None = None
+    severity: str | None = None
+
+
+class AlertResponse(BaseModel):
+    id: int
+    alert_name: str
+    severity: str
+    status: str
+    summary: str | None
+    source: str | None
+    notes: str | None
+    fired_at: str | None
+    acknowledged_at: str | None
+    resolved_at: str | None
+    acknowledged_by: str | None
+
+
+class AlertListResponse(BaseModel):
+    data: list[AlertResponse]
+
+
+class BulkLoadResponse(BaseModel):
+    file: str
+    row_count: int | None = None
+    loaded: int
 
 
 def _coerce_bool(name: str, value: object) -> bool:

@@ -37,3 +37,22 @@ groups:
           resolved_summary: "{{ $labels.instance }} error rate back to normal"
           resolved_description: >
             5xx error rate has dropped below 5%. No further action needed.
+
+      - alert: HighLatencyP95
+        expr: >
+          histogram_quantile(0.95,
+            sum by (le, instance) (
+              rate(http_request_duration_seconds_bucket{job="flask_app"}[5m])
+            )
+          ) > 2
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} p95 latency is above 2 seconds"
+          description: >
+            The 95th percentile request latency on {{ $labels.instance }}
+            has exceeded 2 seconds for more than 2 minutes.
+          resolved_summary: "{{ $labels.instance }} latency back to normal"
+          resolved_description: >
+            P95 latency has dropped below 2 seconds. No further action needed.

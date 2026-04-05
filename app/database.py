@@ -38,9 +38,10 @@ def init_db(app):
     from app.models.user import User
     from app.models.url import Url
     from app.models.event import Event
+    from app.models.alert import Alert
     with database:
         try:
-            database.create_tables([User, Url, Event], safe=True)
+            database.create_tables([User, Url, Event, Alert], safe=True)
         except Exception:
             pass  # another worker already created the tables — safe to ignore
 

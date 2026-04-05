@@ -10,6 +10,9 @@ from flask_openapi3.openapi import OpenAPI
 from prometheus_flask_exporter import PrometheusMetrics
 from werkzeug.exceptions import HTTPException
 
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
 from app.config import get_settings
 from app.database import db, init_db
 from app.lib.api import error_response
@@ -43,9 +46,20 @@ def create_app():
         default_labels={"instance": os.environ.get("HOSTNAME", "unknown")},
     )
 
+    settings = get_settings()
+    limiter = Limiter(
+        get_remote_address,
+        app=app,
+        default_limits=["200 per minute"],
+        storage_uri=settings.redis_url,
+        storage_uri_fallback="memory://",
+    )
+    app.limiter = limiter
+
     init_db(app)
 
     from app import models  # noqa: F401 - registers models with Peewee
+    from app.models.alert import Alert
     from app.models.event import Event
     from app.models.url import Url
     from app.models.user import User
@@ -56,7 +70,7 @@ def create_app():
         db.execute_sql("SELECT pg_advisory_lock(%s)", (STARTUP_SCHEMA_LOCK_ID,))
         try:
             # Keep startup resilient in environments where migrations were not run yet.
-            db.create_tables([User, Url, Event], safe=True)
+            db.create_tables([User, Url, Event, Alert], safe=True)
         finally:
             db.execute_sql("SELECT pg_advisory_unlock(%s)", (STARTUP_SCHEMA_LOCK_ID,))
     finally:
@@ -139,6 +153,7 @@ def create_app():
         return "boom", 500
 
     @app.route("/health")
+    @limiter.exempt
     def health():
         return jsonify(status="ok")
 

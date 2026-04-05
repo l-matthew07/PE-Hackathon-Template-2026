@@ -30,18 +30,19 @@ _test_db = SqliteDatabase(":memory:")
 @pytest.fixture(autouse=True)
 def _setup_db():
     """Bind models to an in-memory SQLite DB and create tables fresh per test."""
+    from app.models.alert import Alert
     from app.models.event import Event
     from app.models.url import Url
     from app.models.user import User
 
-    _test_db.bind([User, Url, Event])
+    _test_db.bind([User, Url, Event, Alert])
     db.initialize(_test_db)
     _test_db.connect(reuse_if_open=True)
-    _test_db.create_tables([User, Url, Event])
+    _test_db.create_tables([User, Url, Event, Alert])
 
     yield
 
-    _test_db.drop_tables([Event, Url, User])
+    _test_db.drop_tables([Event, Url, User, Alert])
     if not _test_db.is_closed():
         _test_db.close()
 
@@ -57,6 +58,7 @@ def app(_setup_db):
     from werkzeug.exceptions import HTTPException
 
     from app.lib.api import error_response
+    from app.routes.alerts import alerts_bp
     from app.routes.events import events_bp
     from app.routes.urls import urls_bp
     from app.routes.users import users_bp
@@ -69,6 +71,7 @@ def app(_setup_db):
     test_app.register_blueprint(users_bp)
     test_app.register_blueprint(urls_bp)
     test_app.register_blueprint(events_bp)
+    test_app.register_blueprint(alerts_bp)
 
     @test_app.route("/health")
     def health():
