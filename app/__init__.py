@@ -52,7 +52,6 @@ def create_app():
         app=app,
         default_limits=["200 per minute"],
         storage_uri=settings.redis_url,
-        storage_uri_fallback="memory://",
     )
     app.limiter = limiter
 
