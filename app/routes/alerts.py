@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from flask_openapi3.blueprint import APIBlueprint
 from flask_openapi3.models.tag import Tag
@@ -60,7 +60,7 @@ def create_alert(body: AlertCreatePayload):
         summary=body.summary or "",
         source=body.source or "",
         notes=body.notes or "",
-        fired_at=datetime.utcnow(),
+        fired_at=datetime.now(UTC),
     )
     return _serialize_alert(alert), 201
 
@@ -87,7 +87,7 @@ def update_alert(path: AlertIdPath, body: AlertUpdatePayload):
                 400,
             )
         alert.status = body.status
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         if body.status == "acknowledged":
             alert.acknowledged_at = now
             if body.acknowledged_by:
@@ -96,7 +96,7 @@ def update_alert(path: AlertIdPath, body: AlertUpdatePayload):
             alert.resolved_at = now
 
     if body.notes:
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = datetime.now(UTC).isoformat()
         new_note = f"[{timestamp}] {body.notes}"
         if alert.notes:
             alert.notes = alert.notes + "\n" + new_note
