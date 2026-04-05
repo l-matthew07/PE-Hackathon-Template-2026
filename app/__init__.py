@@ -27,6 +27,29 @@ from app.routes import register_routes
 _logger = logging.getLogger(__name__)
 
 
+def _rate_limit_key() -> str:
+    """Rate-limit by user id when present; otherwise fall back to client IP."""
+    try:
+        user_id = request.view_args.get("user_id") if isinstance(request.view_args, dict) else None
+        if user_id is None:
+            user_id = request.args.get("user_id")
+        if user_id is None:
+            user_id = request.headers.get("X-User-Id")
+
+        # Only parse JSON bodies when the request is marked as JSON.
+        if user_id is None and request.is_json:
+            json_payload = request.get_json(silent=True)
+            if isinstance(json_payload, dict):
+                user_id = json_payload.get("user_id")
+
+        if user_id is not None:
+            return f"user:{user_id}"
+    except Exception:
+        _logger.exception("Failed to build rate limit key; falling back to client IP")
+
+    return f"ip:{get_remote_address()}"
+
+
 def _resolve_limiter_storage_uri(redis_url: str) -> str:
     """Prefer Redis for distributed limiting, but degrade gracefully when unavailable."""
     try:
@@ -68,12 +91,12 @@ def create_app():
     settings = get_settings()
     limiter_storage_uri = _resolve_limiter_storage_uri(settings.redis_url)
     limiter = Limiter(
-        get_remote_address,
+        _rate_limit_key,
         app=app,
-        default_limits=["200 per minute"],
+        default_limits=["500 per minute"],
         storage_uri=limiter_storage_uri,
     )
-    app.limiter = limiter
+    setattr(app, "limiter", limiter)
 
     init_db(app)
 
