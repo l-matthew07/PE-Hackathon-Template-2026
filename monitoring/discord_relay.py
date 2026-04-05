@@ -20,50 +20,38 @@ def log(msg):
     sys.stderr.flush()
 
 
-def send_to_discord(payload: dict) -> None:
-    alerts = payload.get("alerts", [])
-    if not alerts:
-        return
+def send_single_alert(alert: dict) -> None:
+    """Send one Discord message per alert."""
+    labels = alert.get("labels", {})
+    annotations = alert.get("annotations", {})
+    is_firing = alert.get("status") == "firing"
 
-    firing = [a for a in alerts if a.get("status") == "firing"]
+    name = labels.get("alertname", "Alert")
+    instance = labels.get("instance", "")
+    if is_firing:
+        summary = annotations.get("summary", name)
+        description = annotations.get("description", "").strip()
+    else:
+        summary = annotations.get("resolved_summary", annotations.get("summary", name))
+        description = annotations.get("resolved_description", annotations.get("description", "")).strip()
 
-    embeds = []
-    for alert in alerts:
-        labels = alert.get("labels", {})
-        annotations = alert.get("annotations", {})
-        is_firing = alert.get("status") == "firing"
+    color = 0xFF0000 if is_firing else 0x00FF00
+    state = "FIRING" if is_firing else "RESOLVED"
 
-        name = labels.get("alertname", "Alert")
-        instance = labels.get("instance", "")
-        if is_firing:
-            summary = annotations.get("summary", name)
-            description = annotations.get("description", "").strip()
-        else:
-            summary = annotations.get("resolved_summary", annotations.get("summary", name))
-            description = annotations.get("resolved_description", annotations.get("description", "")).strip()
+    embed = {
+        "title": f"[{state}] {name}",
+        "description": f"**{summary}**\n{description}",
+        "color": color,
+    }
+    if instance:
+        embed["fields"] = [{"name": "Instance", "value": instance, "inline": True}]
 
-        color = 0xFF0000 if is_firing else 0x00FF00
-        state = "FIRING" if is_firing else "RESOLVED"
+    mention = f"<@&{ONCALL_ROLE_ID}> " if ONCALL_ROLE_ID and is_firing else ""
+    icon = "🚨" if is_firing else "✅"
+    alert_key = f"{name}:{instance}" if instance else name
+    content = f"{mention}{icon} {alert_key}"
 
-        embed = {
-            "title": f"[{state}] {name}",
-            "description": f"**{summary}**\n{description}",
-            "color": color,
-        }
-        if instance:
-            embed["fields"] = [{"name": "Instance", "value": instance, "inline": True}]
-        embeds.append(embed)
-
-    mention = f"<@&{ONCALL_ROLE_ID}> " if ONCALL_ROLE_ID and firing else ""
-    icon = "🚨" if firing else "✅"
-    alert_keys = ", ".join(
-        f"{a['labels'].get('alertname', 'Alert')}:{a['labels'].get('instance', '')}"
-        if a['labels'].get('instance') else a['labels'].get('alertname', 'Alert')
-        for a in alerts
-    )
-    content = f"{mention}{icon} {alert_keys}"
-
-    discord_payload = json.dumps({"content": content, "embeds": embeds}).encode()
+    discord_payload = json.dumps({"content": content, "embeds": [embed]}).encode()
     log(f"Sending to Discord: {discord_payload.decode()}")
 
     req = urllib.request.Request(
@@ -85,6 +73,14 @@ def send_to_discord(payload: dict) -> None:
     except Exception as e:
         log(f"Discord request failed: {e}")
         raise
+
+
+def send_to_discord(payload: dict) -> None:
+    alerts = payload.get("alerts", [])
+    if not alerts:
+        return
+    for alert in alerts:
+        send_single_alert(alert)
 
 
 class Handler(BaseHTTPRequestHandler):
