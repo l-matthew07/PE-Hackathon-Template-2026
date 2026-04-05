@@ -268,15 +268,13 @@ async def escalate(
 
 
 def get_active_alertmanager_keys() -> set[str]:
-    """Return the set of 'alertname:instance' keys currently active in Alertmanager."""
+    """Return the set of 'alertname:instance' keys currently firing in Alertmanager (including suppressed)."""
     try:
-        req = urllib.request.Request(f"{ALERTMANAGER_URL}/api/v2/alerts")
+        req = urllib.request.Request(f"{ALERTMANAGER_URL}/api/v2/alerts?active=true&silenced=true&inhibited=true")
         with urllib.request.urlopen(req) as resp:
             alerts = json.loads(resp.read())
         keys = set()
         for a in alerts:
-            if a["status"]["state"] == "suppressed":
-                continue
             name = a["labels"]["alertname"]
             instance = a["labels"].get("instance", "")
             keys.add(f"{name}:{instance}" if instance else name)
