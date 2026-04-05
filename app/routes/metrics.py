@@ -23,13 +23,17 @@
 #   from app.routes.metrics import db_pool_connections_active
 #   db_pool_connections_active.set(current_connection_count)
 
+import os
+
 from flask import Blueprint
 from prometheus_client import (
     CONTENT_TYPE_LATEST,
+    CollectorRegistry,
     Counter,
     Gauge,
     Histogram,
     generate_latest,
+    multiprocess,
 )
 
 metrics_bp = Blueprint("metrics", __name__)
@@ -53,6 +57,7 @@ http_requests_total = Counter(
 active_requests = Gauge(
     "active_requests",
     "Number of in-flight HTTP requests",
+    multiprocess_mode="livesum",
 )
 
 # --- App-specific: URL shortener ---
@@ -66,10 +71,16 @@ url_shortener_redirects_total = Counter(
 db_pool_connections_active = Gauge(
     "db_pool_connections_active",
     "Active database pool connections",
+    multiprocess_mode="livesum",
 )
 
 
 @metrics_bp.route("/metrics")
 def metrics():
-    data = generate_latest()
+    if "PROMETHEUS_MULTIPROC_DIR" in os.environ:
+        registry = CollectorRegistry()
+        multiprocess.MultiProcessCollector(registry)
+        data = generate_latest(registry)
+    else:
+        data = generate_latest()
     return data, 200, {"Content-Type": CONTENT_TYPE_LATEST}
